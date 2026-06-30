@@ -15,11 +15,12 @@ import { RecoveryWorkspace } from "./components/RecoveryWorkspace";
 import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { TraceDrawer } from "./components/TraceDrawer";
 import { demoArtifacts, initialTrace } from "./data/demo";
-import { reconstructCommitment } from "./lib/api";
+import { persistRecovery, reconstructCommitment } from "./lib/api";
 import type {
   Artifact,
   Claim,
   Reconstruction,
+  PersistenceStatus,
   RecoveryPathType,
   ReviewDecision,
   TraceEvent,
@@ -96,6 +97,8 @@ export default function App() {
   const [selectedPath, setSelectedPath] = useState<RecoveryPathType | null>(null);
   const [draft, setDraft] = useState("");
   const [approved, setApproved] = useState(false);
+  const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("idle");
+  const [recoveryId, setRecoveryId] = useState<string | null>(null);
   const [trace, setTrace] = useState<TraceEvent[]>(initialTrace);
   const [traceOpen, setTraceOpen] = useState(false);
   const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
@@ -123,6 +126,8 @@ export default function App() {
       setDecisions({});
       setSelectedPath(null);
       setApproved(false);
+      setPersistenceStatus("idle");
+      setRecoveryId(null);
       setStep("review");
       addTrace(
         makeTrace(
@@ -199,17 +204,31 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function approvePlan() {
-    if (!activePath) return;
-    setApproved(true);
-    addTrace(
-      makeTrace(
-        "Recovery plan approved",
-        `${activePath.title}. First move: ${activePath.nextMove}`,
-        "approval",
-      ),
+  async function approvePlan() {
+    if (!activePath || !reconstruction) return;
+    const approvalEvent = makeTrace(
+      "Recovery plan approved",
+      `${activePath.title}. First move: ${activePath.nextMove}`,
+      "approval",
     );
+    setApproved(true);
+    setPersistenceStatus("saving");
+    addTrace(approvalEvent);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    try {
+      const result = await persistRecovery({
+        reconstruction,
+        path: activePath,
+        draft,
+        decisions,
+        trace: [...trace, approvalEvent],
+      });
+      setPersistenceStatus(result.persisted ? "saved" : "session");
+      setRecoveryId(result.id ?? null);
+    } catch {
+      setPersistenceStatus("error");
+    }
   }
 
   function reset() {
@@ -220,6 +239,8 @@ export default function App() {
     setSelectedPath(null);
     setDraft("");
     setApproved(false);
+    setPersistenceStatus("idle");
+    setRecoveryId(null);
     setError(null);
     setTrace([makeTrace("Recovery opened", `${demoArtifacts.length} demo artifacts are ready for review.`, "system")]);
     window.scrollTo({ top: 0 });
@@ -314,8 +335,10 @@ export default function App() {
                 path={activePath}
                 draft={draft}
                 approved={approved}
+                persistenceStatus={persistenceStatus}
+                recoveryId={recoveryId}
                 onDraftChange={setDraft}
-                onApprove={approvePlan}
+                onApprove={() => void approvePlan()}
                 onBack={() => navigate("recovery")}
                 onRestart={reset}
               />

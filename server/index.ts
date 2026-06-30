@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { FieldValue, Firestore } from "@google-cloud/firestore";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
@@ -97,6 +98,44 @@ const reconstructionSchema = z.object({
   }),
 });
 
+const persistedReconstructionSchema = reconstructionSchema.extend({
+  generatedAt: z.string().max(100),
+  mode: z.enum(["gemini", "demo"]).optional(),
+  durationMs: z.number().nonnegative().max(600_000).optional(),
+});
+
+const traceEventSchema = z.object({
+  id: z.string().min(1).max(120),
+  timestamp: z.string().max(100),
+  title: z.string().min(1).max(240),
+  detail: z.string().max(2_000),
+  type: z.enum(["system", "evidence", "correction", "decision", "approval"]),
+});
+
+const saveRecoverySchema = z.object({
+  reconstruction: persistedReconstructionSchema,
+  path: recoveryPathSchema,
+  draft: z.string().max(12_000),
+  decisions: z.record(
+    z.string().max(120),
+    z.enum(["confirmed", "corrected", "rejected", "unresolved"]),
+  ),
+  trace: z.array(traceEventSchema).max(80),
+});
+
+let firestore: Firestore | null = null;
+
+function getFirestore(): Firestore | null {
+  if (process.env.ENABLE_FIRESTORE !== "true") return null;
+  if (!firestore) {
+    firestore = new Firestore({
+      databaseId: process.env.FIRESTORE_DATABASE ?? "(default)",
+    });
+    firestore.settings({ ignoreUndefinedProperties: true });
+  }
+  return firestore;
+}
+
 const app = express();
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
@@ -128,6 +167,14 @@ const reconstructionLimiter = rateLimit({
   message: {
     error: "This browser has reached the temporary reconstruction limit. Try again in a few minutes.",
   },
+});
+
+const persistenceLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many recovery records were submitted. Try again in a few minutes." },
 });
 
 app.get("/api/health", (_request, response) => {
@@ -215,6 +262,48 @@ ${JSON.stringify(artifactPacket, null, 2)}
     console.error("Gemini reconstruction failed", error);
     response.status(502).json({
       error: "Gemini could not produce a trustworthy structured reconstruction. Try again or use the demo sources.",
+    });
+  }
+});
+
+app.post("/api/recoveries", persistenceLimiter, async (request, response) => {
+  const parsedRequest = saveRecoverySchema.safeParse(request.body);
+
+  if (!parsedRequest.success) {
+    response.status(400).json({ error: "The approved recovery record was not valid." });
+    return;
+  }
+
+  const database = getFirestore();
+  if (!database) {
+    response.json({ persisted: false, mode: "session" });
+    return;
+  }
+
+  const { reconstruction, path, draft, decisions, trace } = parsedRequest.data;
+
+  try {
+    const record = await database.collection("recoveries").add({
+      schemaVersion: 1,
+      commitment: reconstruction.commitment,
+      claims: reconstruction.claims,
+      sufficiency: reconstruction.sufficiency,
+      selectedPath: path,
+      approvedDraft: draft,
+      reviewDecisions: decisions,
+      trace,
+      reconstructionMode: reconstruction.mode ?? "demo",
+      reconstructionDurationMs: reconstruction.durationMs,
+      approvedAt: new Date().toISOString(),
+      createdAt: FieldValue.serverTimestamp(),
+      privacyBoundary: "No complete source artifacts stored",
+    });
+
+    response.status(201).json({ persisted: true, id: record.id, mode: "firestore" });
+  } catch (error) {
+    console.error("Firestore recovery save failed", error);
+    response.status(503).json({
+      error: "The plan was approved, but its cloud record could not be saved.",
     });
   }
 });

@@ -64,16 +64,19 @@ PROJECT_ID=your-google-cloud-project-id npm run deploy:gcp
 ```
 
 The script enables the required APIs, creates a least-privilege runtime service
-account, stores the Gemini key in Secret Manager, and deploys a public Cloud Run
-service in Mumbai (`asia-south1`). Override `REGION`, `SERVICE`, or `SECRET` as
-environment variables when needed. Never put the real key in `.env.example`,
-GitHub, or browser-side code.
+account, creates a delete-protected Firestore database, stores the Gemini key in
+Secret Manager, and deploys a public Cloud Run service in Mumbai
+(`asia-south1`). Approved recoveries retain reconstructed claims, the selected
+path, corrections, and approval trace; complete source artifacts are not stored.
+Override `REGION`, `SERVICE`, or `SECRET` as environment variables when needed.
+Never put the real key in `.env.example`, GitHub, or browser-side code.
 
 ## Stack
 
 - React, TypeScript, Vite
 - Express
 - Google GenAI SDK with schema-constrained reconstruction
+- Cloud Firestore for approved recovery records
 - Zod validation
 - Lucide icons and Motion
 - Google Cloud Run deployment target

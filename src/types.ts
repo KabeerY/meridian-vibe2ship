@@ -118,6 +118,8 @@ export interface Reconstruction {
 
 export type ReviewDecision = "confirmed" | "corrected" | "rejected" | "unresolved";
 
+export type PersistenceStatus = "idle" | "saving" | "saved" | "session" | "error";
+
 export interface TraceEvent {
   id: string;
   timestamp: string;

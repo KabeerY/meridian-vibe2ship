@@ -5,19 +5,22 @@ import {
   Clipboard,
   Clock3,
   Copy,
+  Database,
   FileCheck2,
   History,
   RotateCcw,
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-import type { RecoveryPath, Reconstruction } from "../types";
+import type { PersistenceStatus, RecoveryPath, Reconstruction } from "../types";
 
 interface ApprovalWorkspaceProps {
   reconstruction: Reconstruction;
   path: RecoveryPath;
   draft: string;
   approved: boolean;
+  persistenceStatus: PersistenceStatus;
+  recoveryId: string | null;
   onDraftChange: (value: string) => void;
   onApprove: () => void;
   onBack: () => void;
@@ -29,6 +32,8 @@ export function ApprovalWorkspace({
   path,
   draft,
   approved,
+  persistenceStatus,
+  recoveryId,
   onDraftChange,
   onApprove,
   onBack,
@@ -50,7 +55,7 @@ export function ApprovalWorkspace({
           <p className="eyebrow">Recovery ready</p>
           <h1 id="approved-title">The comeback has a clear first move.</h1>
           <p>
-            Your confirmed state, chosen path, and approved plan are preserved together. No message was sent automatically.
+            Your confirmed state, chosen path, and approved plan are preserved together. Complete source artifacts are not stored.
           </p>
         </section>
 
@@ -69,7 +74,16 @@ export function ApprovalWorkspace({
           <div className="approved-grid">
             <div><Clock3 size={16} /><span><small>Deadline</small>{reconstruction.commitment.deadline}</span></div>
             <div><ShieldCheck size={16} /><span><small>Authority</small>User approved</span></div>
-            <div><History size={16} /><span><small>Trace</small>Sources and corrections retained</span></div>
+            <div>
+              {persistenceStatus === "saved" ? <Database size={16} /> : <History size={16} />}
+              <span>
+                <small>Recovery record</small>
+                {persistenceStatus === "saving" ? "Saving securely..." : null}
+                {persistenceStatus === "saved" ? `Cloud saved${recoveryId ? ` · ${recoveryId.slice(0, 8)}` : ""}` : null}
+                {persistenceStatus === "session" ? "Session mode" : null}
+                {persistenceStatus === "error" ? "Cloud save unavailable" : null}
+              </span>
+            </div>
           </div>
         </div>
 

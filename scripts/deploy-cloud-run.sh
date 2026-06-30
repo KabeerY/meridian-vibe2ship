@@ -21,11 +21,28 @@ gcloud services enable \
   run.googleapis.com \
   cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
-  secretmanager.googleapis.com
+  secretmanager.googleapis.com \
+  firestore.googleapis.com
 
 if ! gcloud iam service-accounts describe "${RUNTIME_EMAIL}" >/dev/null 2>&1; then
   gcloud iam service-accounts create "${RUNTIME_SA}" \
     --display-name="Meridian Cloud Run runtime"
+fi
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${RUNTIME_EMAIL}" \
+  --role="roles/datastore.user" \
+  --condition=None \
+  --quiet
+
+if ! gcloud firestore databases describe --database="(default)" >/dev/null 2>&1; then
+  echo "Creating the Firestore database in ${REGION}..."
+  gcloud firestore databases create \
+    --database="(default)" \
+    --location="${REGION}" \
+    --type=firestore-native \
+    --delete-protection \
+    --quiet
 fi
 
 read -r -s -p "Paste the Gemini API key (input is hidden): " GEMINI_API_KEY
@@ -51,7 +68,7 @@ gcloud run deploy "${SERVICE}" \
   --allow-unauthenticated \
   --service-account="${RUNTIME_EMAIL}" \
   --set-secrets="GEMINI_API_KEY=${SECRET}:latest" \
-  --set-env-vars="GEMINI_MODEL=gemini-3.5-flash,NODE_ENV=production" \
+  --set-env-vars="GEMINI_MODEL=gemini-3.5-flash,NODE_ENV=production,ENABLE_FIRESTORE=true,FIRESTORE_DATABASE=(default)" \
   --memory=512Mi \
   --cpu=1 \
   --concurrency=20 \
