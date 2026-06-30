@@ -1,16 +1,23 @@
 import {
   ArrowRight,
+  Bot,
   ChevronRight,
   CircleHelp,
+  FlaskConical,
   History,
   Menu,
+  Sparkles,
   Waypoints,
+  X,
 } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { ApprovalWorkspace } from "./components/ApprovalWorkspace";
 import { ArtifactIntake } from "./components/ArtifactIntake";
+import { CopilotDrawer } from "./components/CopilotDrawer";
+import { DemoWorkspaceMenu } from "./components/DemoWorkspaceMenu";
 import { EvidenceDrawer } from "./components/EvidenceDrawer";
+import { GuidanceDrawer, GuideCoach } from "./components/GuidanceDrawer";
 import { RecoveryWorkspace } from "./components/RecoveryWorkspace";
 import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { TraceDrawer } from "./components/TraceDrawer";
@@ -103,6 +110,11 @@ export default function App() {
   const [traceOpen, setTraceOpen] = useState(false);
   const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(() => window.localStorage.getItem("meridian-guide-seen") !== "true");
+  const [guideActive, setGuideActive] = useState(false);
+  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
 
   const activeClaim = useMemo(
     () => reconstruction?.claims.find((claim) => claim.id === activeClaimId) ?? null,
@@ -129,6 +141,7 @@ export default function App() {
       setPersistenceStatus("idle");
       setRecoveryId(null);
       setStep("review");
+      setAnalysisNotice(result.warning ?? null);
       addTrace(
         makeTrace(
           "Current state reconstructed",
@@ -231,6 +244,23 @@ export default function App() {
     }
   }
 
+  function revisePlan() {
+    const priorRecord = recoveryId;
+    setApproved(false);
+    setPersistenceStatus("idle");
+    setRecoveryId(null);
+    addTrace(
+      makeTrace(
+        "Approved plan reopened",
+        priorRecord
+          ? "A revision was started. The previous cloud record remains unchanged until a new version is approved."
+          : "A revision was started before the recovery record finished saving.",
+        "correction",
+      ),
+    );
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function reset() {
     setStep("sources");
     setArtifacts(demoArtifacts);
@@ -242,6 +272,7 @@ export default function App() {
     setPersistenceStatus("idle");
     setRecoveryId(null);
     setError(null);
+    setAnalysisNotice(null);
     setTrace([makeTrace("Recovery opened", `${demoArtifacts.length} demo artifacts are ready for review.`, "system")]);
     window.scrollTo({ top: 0 });
   }
@@ -253,6 +284,22 @@ export default function App() {
     setStep(target);
     if (target !== "approve") setApproved(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function closeGuide() {
+    window.localStorage.setItem("meridian-guide-seen", "true");
+    setGuideOpen(false);
+  }
+
+  function startGuide() {
+    window.localStorage.setItem("meridian-guide-seen", "true");
+    setGuideOpen(false);
+    setGuideActive(true);
+  }
+
+  function restartGuide() {
+    setDemoMenuOpen(false);
+    setGuideOpen(true);
   }
 
   return (
@@ -271,19 +318,29 @@ export default function App() {
           </div>
 
           <div className="topbar-actions">
-            <button className="topbar-button topbar-button--help" type="button" title="About this recovery" aria-label="About this recovery">
+            <button className="topbar-button topbar-button--help" type="button" title="Open recovery guide" aria-label="Open recovery guide" onClick={() => setGuideOpen(true)}>
               <CircleHelp size={17} aria-hidden="true" />
+            </button>
+            <button className="topbar-button topbar-button--copilot" type="button" aria-label="Ask Meridian" onClick={() => setCopilotOpen(true)}>
+              <Bot size={17} aria-hidden="true" />
+              <span>Ask Meridian</span>
             </button>
             <button className="topbar-button" type="button" aria-label="Open recovery trace" onClick={() => setTraceOpen(true)}>
               <History size={17} aria-hidden="true" />
               <span>Trace</span>
             </button>
-            <button className="avatar-button" type="button" aria-label="Account menu">KM</button>
-            <button className="mobile-menu-button" type="button" aria-label="Open menu"><Menu size={19} /></button>
+            <button className="demo-workspace-button" type="button" aria-label="Open demo workspace menu" onClick={() => setDemoMenuOpen(true)}>
+              <FlaskConical size={15} aria-hidden="true" />
+              <span>Demo</span>
+            </button>
+            <button className="mobile-menu-button" type="button" aria-label="Open demo workspace menu" onClick={() => setDemoMenuOpen(true)}><Menu size={19} /></button>
           </div>
         </header>
 
         <StageRail current={step} currentComplete={approved} onNavigate={navigate} />
+
+        {guideActive ? <GuideCoach step={step} approved={approved} onEnd={() => setGuideActive(false)} /> : null}
+        {analysisNotice ? <div className="system-notice" role="status"><Sparkles size={15} /><span>{analysisNotice}</span><button type="button" onClick={() => setAnalysisNotice(null)} aria-label="Dismiss notice"><X size={14} /></button></div> : null}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -337,8 +394,11 @@ export default function App() {
                 approved={approved}
                 persistenceStatus={persistenceStatus}
                 recoveryId={recoveryId}
+                sourceCount={artifacts.filter((artifact) => artifact.selected).length}
+                reviewedCount={Object.keys(decisions).length}
                 onDraftChange={setDraft}
                 onApprove={() => void approvePlan()}
+                onRevise={revisePlan}
                 onBack={() => navigate("recovery")}
                 onRestart={reset}
               />
@@ -365,6 +425,38 @@ export default function App() {
         ) : null}
 
         {traceOpen ? <TraceDrawer events={trace} onClose={() => setTraceOpen(false)} /> : null}
+        {guideOpen ? (
+          <GuidanceDrawer
+            currentStep={step}
+            firstVisit={window.localStorage.getItem("meridian-guide-seen") !== "true"}
+            onClose={closeGuide}
+            onStartGuide={startGuide}
+          />
+        ) : null}
+        {demoMenuOpen ? (
+          <DemoWorkspaceMenu
+            onClose={() => setDemoMenuOpen(false)}
+            onOpenGuide={restartGuide}
+            onReset={() => {
+              setDemoMenuOpen(false);
+              reset();
+            }}
+          />
+        ) : null}
+        {copilotOpen ? (
+          <CopilotDrawer
+            artifacts={artifacts}
+            reconstruction={reconstruction}
+            step={step}
+            selectedPath={selectedPath}
+            draft={draft}
+            onClose={() => setCopilotOpen(false)}
+            onOpenClaim={(claimId) => {
+              setCopilotOpen(false);
+              openEvidence(claimId);
+            }}
+          />
+        ) : null}
       </div>
     </MotionConfig>
   );

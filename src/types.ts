@@ -120,6 +120,13 @@ export type ReviewDecision = "confirmed" | "corrected" | "rejected" | "unresolve
 
 export type PersistenceStatus = "idle" | "saving" | "saved" | "session" | "error";
 
+export interface CopilotResponse {
+  answer: string;
+  referencedClaimIds: string[];
+  suggestedQuestions: string[];
+  mode: "gemini" | "guided";
+}
+
 export interface TraceEvent {
   id: string;
   timestamp: string;

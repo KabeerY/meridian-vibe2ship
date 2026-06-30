@@ -7,7 +7,9 @@ import {
   Copy,
   Database,
   FileCheck2,
+  FileSearch,
   History,
+  Pencil,
   RotateCcw,
   ShieldCheck,
 } from "lucide-react";
@@ -21,8 +23,11 @@ interface ApprovalWorkspaceProps {
   approved: boolean;
   persistenceStatus: PersistenceStatus;
   recoveryId: string | null;
+  sourceCount: number;
+  reviewedCount: number;
   onDraftChange: (value: string) => void;
   onApprove: () => void;
+  onRevise: () => void;
   onBack: () => void;
   onRestart: () => void;
 }
@@ -34,8 +39,11 @@ export function ApprovalWorkspace({
   approved,
   persistenceStatus,
   recoveryId,
+  sourceCount,
+  reviewedCount,
   onDraftChange,
   onApprove,
+  onRevise,
   onBack,
   onRestart,
 }: ApprovalWorkspaceProps) {
@@ -72,8 +80,9 @@ export function ApprovalWorkspace({
             <strong>{path.nextMove}</strong>
           </div>
           <div className="approved-grid">
-            <div><Clock3 size={16} /><span><small>Deadline</small>{reconstruction.commitment.deadline}</span></div>
-            <div><ShieldCheck size={16} /><span><small>Authority</small>User approved</span></div>
+            <div><FileSearch size={16} /><span><small>Evidence reconciled</small>{sourceCount} selected sources</span></div>
+            <div><Clock3 size={16} /><span><small>State reconstruction</small>{typeof reconstruction.durationMs === "number" ? `${(reconstruction.durationMs / 1000).toFixed(1)} seconds` : "Completed"}</span></div>
+            <div><ShieldCheck size={16} /><span><small>Uncertainty reviewed</small>{reviewedCount} material claims</span></div>
             <div>
               {persistenceStatus === "saved" ? <Database size={16} /> : <History size={16} />}
               <span>
@@ -91,6 +100,10 @@ export function ApprovalWorkspace({
           <button className="secondary-button" type="button" onClick={() => void copyDraft()}>
             {copied ? <Check size={16} /> : <Copy size={16} />}
             {copied ? "Copied" : "Copy status draft"}
+          </button>
+          <button className="secondary-button" type="button" onClick={onRevise}>
+            <Pencil size={16} />
+            Revise approved plan
           </button>
           <button className="primary-button" type="button" onClick={onRestart}>
             <RotateCcw size={16} />
