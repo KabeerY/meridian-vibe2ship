@@ -45,25 +45,18 @@ if ! gcloud firestore databases describe --database="(default)" >/dev/null 2>&1;
     --quiet
 fi
 
-if [[ -z "${GEMINI_API_KEY:-}" ]]; then
-  KEY_RESOURCE="$(gcloud services api-keys list \
-    --filter='displayName="Gemini API Key"' \
-    --limit=1 \
-    --format='value(name)')"
-
-  if [[ -n "${KEY_RESOURCE}" ]]; then
-    echo "Using the existing Gemini API Key from this project."
-    GEMINI_API_KEY="$(gcloud services api-keys get-key-string "${KEY_RESOURCE}" \
-      --format='value(keyString)')"
+if gcloud secrets describe "${SECRET}" >/dev/null 2>&1; then
+  if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+    echo "Adding the explicitly provided Gemini key as a new secret version."
+    printf '%s' "${GEMINI_API_KEY}" | gcloud secrets versions add "${SECRET}" --data-file=-
   else
+    echo "Reusing the existing Gemini key in Secret Manager."
+  fi
+else
+  if [[ -z "${GEMINI_API_KEY:-}" ]]; then
     read -r -s -p "Paste the Gemini API key (input is hidden): " GEMINI_API_KEY
     echo
   fi
-fi
-
-if gcloud secrets describe "${SECRET}" >/dev/null 2>&1; then
-  printf '%s' "${GEMINI_API_KEY}" | gcloud secrets versions add "${SECRET}" --data-file=-
-else
   printf '%s' "${GEMINI_API_KEY}" | gcloud secrets create "${SECRET}" \
     --data-file=- \
     --replication-policy=automatic
