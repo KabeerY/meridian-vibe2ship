@@ -24,8 +24,10 @@ The included hero case follows a software engineer recovering an at-risk client 
 - Explicit visual grammar for stated, inferred, conflicting, missing, and obsolete evidence
 - Five-way recovery decision model instead of blind rescheduling
 - **Ask Meridian**, a case-bounded conversational assistant for evidence, options, and draft questions
-- First-run guide plus contextual guidance at every recovery stage
+- A 21-step, game-like guided rescue spanning reconstruction, verification, choice, and approval
+- Demo-first entry plus optional Google Identity Platform email/password access
 - Human approval, editable drafts, traceable corrections, and revision after approval
+- Preview-only Google Calendar focus blocks and Gmail drafts with final confirmation kept in Google
 - Firestore persistence for approved recovery records without storing complete source artifacts
 - Graceful guided fallback for the built-in demo when live Gemini capacity is unavailable
 - Responsive, keyboard-accessible recovery desk for desktop and mobile
@@ -37,24 +39,15 @@ The included hero case follows a software engineer recovering an at-risk client 
 - **Cloud Firestore** - approved recovery records and decision traces
 - **Secret Manager** - server-side Gemini API key storage
 - **Cloud Build** - source-based Cloud Run builds
+- **Identity Platform** - optional email/password account access using a restricted browser key
+- **Google Calendar and Gmail** - prefilled, user-confirmed handoff previews without OAuth access
 - **Google Cloud IAM** - least-privilege runtime service account
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    U[User-selected evidence] --> W[React recovery desk]
-    W --> E[Express API on Cloud Run]
-    E --> G[Gemini API]
-    G --> E
-    E --> W
-    W --> H[Human review and approval]
-    H --> E
-    E --> F[(Cloud Firestore)]
-    S[Secret Manager] --> E
-```
+![Meridian system architecture](assets/meridian-architecture.png)
 
-The browser never receives the Gemini API key. Source text is sent only to the reconstruction or copilot endpoint selected by the user, and full source artifacts are not written to Firestore.
+The browser never receives the Gemini API key. Source text is sent only to the reconstruction or copilot endpoint selected by the user, and full source artifacts are not written to Firestore. Calendar and Gmail actions are prefilled links, not silent API writes.
 
 ## Safety Boundaries
 
@@ -82,9 +75,12 @@ GEMINI_API_KEY=your_key
 GEMINI_MODEL=gemini-3.5-flash
 ENABLE_FIRESTORE=false
 FIRESTORE_DATABASE=(default)
+FIREBASE_WEB_API_KEY=your_restricted_identity_platform_browser_key
+FIREBASE_PROJECT_ID=your-google-cloud-project
+FIREBASE_AUTH_DOMAIN=your-google-cloud-project.firebaseapp.com
 ```
 
-The built-in synthetic case works in guided demo mode without an API key. Custom evidence requires live Gemini reconstruction so unrelated canned data is never presented as analysis.
+The built-in synthetic case works in guided demo mode without a Gemini key. Custom evidence requires live Gemini reconstruction so unrelated canned data is never presented as analysis. Firebase configuration is optional for local development; the guided demo never requires an account.
 
 ## Build And Deploy
 
@@ -97,4 +93,4 @@ The deployment script enables the required Google Cloud APIs, creates the least-
 
 ## Stack
 
-React 19, TypeScript, Vite, Express 5, Google GenAI SDK, Zod, Firestore, Motion, Lucide, Helmet, and Cloud Run.
+React 19, TypeScript, Vite, Express 5, Google GenAI SDK, Firebase Authentication, Zod, Firestore, Motion, Lucide, Helmet, and Cloud Run.

@@ -152,7 +152,7 @@ export function ReviewWorkspace({
         </span>
       </div>
 
-      <section className="brief-section" aria-labelledby="brief-heading">
+      <section className="brief-section" data-tour="review-brief" aria-labelledby="brief-heading">
         <div className="section-heading-row section-heading-row--brief">
           <div>
             <p className="eyebrow">Reconstructed from {artifacts.filter((item) => item.selected).length} sources</p>
@@ -220,6 +220,7 @@ export function ReviewWorkspace({
                       {conflict.options.map((option) => (
                         <button
                           className="conflict-option"
+                          data-tour={option.id === "client-deadline" ? "deadline-option" : undefined}
                           key={option.id}
                           type="button"
                           onClick={() => resolveConflict(claim, option.id)}
@@ -237,20 +238,20 @@ export function ReviewWorkspace({
                     <div className="claim-review-actions">
                       {claim.state === "inferred" ? (
                         <>
-                          <button type="button" onClick={() => onDecision(claim, "confirmed")}>Confirm</button>
+                          <button data-tour="confirm-inference" type="button" onClick={() => onDecision(claim, "confirmed")}>Confirm</button>
                           <button type="button" onClick={() => beginEdit(claim)}>Correct</button>
                           <button type="button" onClick={() => onDecision(claim, "rejected")}>Reject</button>
                         </>
                       ) : null}
                       {claim.state === "conflicting" ? (
-                        <button type="button" onClick={() => setExpandedConflict(claim.id)}>
+                        <button data-tour="resolve-conflict" type="button" onClick={() => setExpandedConflict(claim.id)}>
                           <AlertTriangle size={14} aria-hidden="true" /> Resolve conflict
                         </button>
                       ) : null}
                       {claim.state === "missing" ? (
                         <>
                           <button type="button" onClick={() => beginEdit(claim)}>Add answer</button>
-                          <button type="button" onClick={() => onDecision(claim, "unresolved")}>Keep unresolved</button>
+                          <button data-tour="preserve-unknown" type="button" onClick={() => onDecision(claim, "unresolved")}>Keep unresolved</button>
                         </>
                       ) : null}
                     </div>
@@ -260,6 +261,7 @@ export function ReviewWorkspace({
                 <div className="claim-tools">
                   <button
                     className="evidence-link"
+                    data-tour={claim.state === "inferred" ? "inspect-evidence" : undefined}
                     type="button"
                     onClick={() => onOpenEvidence(claim.id, claim.evidence[0]?.sourceId)}
                   >
@@ -308,7 +310,7 @@ export function ReviewWorkspace({
               Recheck brief
             </button>
           )}
-          <button className="primary-button" type="button" disabled={pendingClaims.length > 0} onClick={onConfirmState}>
+          <button className="primary-button" data-tour="confirm-state" type="button" disabled={pendingClaims.length > 0} onClick={onConfirmState}>
             Confirm current state
             <ChevronRight size={17} aria-hidden="true" />
           </button>

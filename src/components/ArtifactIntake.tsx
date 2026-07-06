@@ -113,7 +113,7 @@ export function ArtifactIntake({
 
   return (
     <main className="workspace workspace--intake" aria-labelledby="intake-title">
-      <header className="workspace-heading intake-heading">
+      <header className="workspace-heading intake-heading" data-tour="sources-overview">
         <div>
           <p className="eyebrow">One commitment</p>
           <h1 id="intake-title">Bring the pieces together.</h1>
@@ -128,7 +128,7 @@ export function ArtifactIntake({
       </header>
 
       <div className="intake-layout">
-        <section className="artifact-section" aria-labelledby="artifact-heading">
+        <section className="artifact-section" data-tour="source-bundle" aria-labelledby="artifact-heading">
           <div className="section-heading-row">
             <div>
               <h2 id="artifact-heading">Selected evidence</h2>
@@ -191,7 +191,7 @@ export function ArtifactIntake({
           ) : null}
 
           <div className="artifact-list">
-            {artifacts.map((artifact) => {
+            {artifacts.map((artifact, index) => {
               const meta = kindMeta[artifact.kind];
               const Icon = meta.icon;
               const isCustom = artifact.id.startsWith("upload-") || artifact.id.startsWith("note-");
@@ -199,6 +199,7 @@ export function ArtifactIntake({
               return (
                 <article
                   className={`artifact-row${artifact.selected ? " artifact-row--selected" : ""}`}
+                  data-tour={index === 0 ? "first-source" : undefined}
                   key={artifact.id}
                 >
                   <button
@@ -263,7 +264,7 @@ export function ArtifactIntake({
           <span className="dock-kicker">Ready to reconstruct</span>
           <strong>{selectedCount} sources · one commitment</strong>
         </div>
-        <button className="primary-button" type="button" disabled={selectedCount < 2 || isAnalyzing} onClick={onAnalyze}>
+        <button className="primary-button" data-tour="reconstruct" type="button" disabled={selectedCount < 2 || isAnalyzing} onClick={onAnalyze}>
           {isAnalyzing ? "Reconstructing…" : "Reconstruct current state"}
         </button>
       </div>

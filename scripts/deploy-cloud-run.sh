@@ -9,6 +9,7 @@ SERVICE="${SERVICE:-meridian}"
 SECRET="${SECRET:-meridian-gemini-key}"
 RUNTIME_SA="${RUNTIME_SA:-meridian-runtime}"
 RUNTIME_EMAIL="${RUNTIME_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
+AUTH_KEY_NAME="${AUTH_KEY_NAME:-Meridian Web Auth}"
 
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "gcloud is required. Install the Google Cloud CLI or run this script in Cloud Shell." >&2
@@ -68,18 +69,29 @@ gcloud secrets add-iam-policy-binding "${SECRET}" \
   --role="roles/secretmanager.secretAccessor" \
   --quiet
 
+AUTH_KEY_RESOURCE="$(gcloud services api-keys list \
+  --filter="displayName='${AUTH_KEY_NAME}'" \
+  --format='value(name)' \
+  --limit=1)"
+if [[ -z "${AUTH_KEY_RESOURCE}" ]]; then
+  echo "The restricted ${AUTH_KEY_NAME} API key is missing." >&2
+  exit 1
+fi
+FIREBASE_WEB_API_KEY="$(gcloud services api-keys get-key-string "${AUTH_KEY_RESOURCE}" --format='value(keyString)')"
+
 gcloud run deploy "${SERVICE}" \
   --source=. \
   --region="${REGION}" \
   --allow-unauthenticated \
   --service-account="${RUNTIME_EMAIL}" \
   --set-secrets="GEMINI_API_KEY=${SECRET}:latest" \
-  --set-env-vars="GEMINI_MODEL=gemini-3.5-flash,NODE_ENV=production,ENABLE_FIRESTORE=true,FIRESTORE_DATABASE=(default)" \
+  --set-env-vars="GEMINI_MODEL=gemini-3.5-flash,NODE_ENV=production,ENABLE_FIRESTORE=true,FIRESTORE_DATABASE=(default),FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY},FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_AUTH_DOMAIN=${PROJECT_ID}.firebaseapp.com" \
   --memory=512Mi \
   --cpu=1 \
   --concurrency=20 \
   --timeout=120 \
   --min=0 \
   --max=3
+unset FIREBASE_WEB_API_KEY
 
 echo "Deployment complete. Cloud Run printed the public service URL above."

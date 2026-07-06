@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
+import { SafeActionPreview } from "./SafeActionPreview";
 import type { PersistenceStatus, RecoveryPath, Reconstruction } from "../types";
 
 interface ApprovalWorkspaceProps {
@@ -57,7 +58,7 @@ export function ApprovalWorkspace({
 
   if (approved) {
     return (
-      <main className="workspace workspace--approved" aria-labelledby="approved-title">
+      <main className="workspace workspace--approved" data-tour="recovery-result" aria-labelledby="approved-title">
         <section className="approved-hero">
           <span className="approved-mark"><Check size={25} aria-hidden="true" /></span>
           <p className="eyebrow">Recovery ready</p>
@@ -95,6 +96,8 @@ export function ApprovalWorkspace({
             </div>
           </div>
         </div>
+
+        <SafeActionPreview reconstruction={reconstruction} path={path} draft={draft} />
 
         <div className="approved-actions">
           <button className="secondary-button" type="button" onClick={() => void copyDraft()}>
@@ -142,7 +145,7 @@ export function ApprovalWorkspace({
             <span className="draft-label">Draft</span>
           </div>
 
-          <div className="next-move-statement">
+          <div className="next-move-statement" data-tour="first-move">
             <span className="next-move-number">01</span>
             <strong>{path.nextMove}</strong>
           </div>
@@ -162,7 +165,7 @@ export function ApprovalWorkspace({
           </div>
         </section>
 
-        <section className="draft-section" aria-labelledby="draft-heading">
+        <section className="draft-section" data-tour="status-draft" aria-labelledby="draft-heading">
           <div className="section-heading-row">
             <div>
               <p className="eyebrow">Optional stakeholder update</p>
@@ -191,7 +194,7 @@ export function ApprovalWorkspace({
           <span className="dock-kicker">Consequence</span>
           <strong>Record this recovery plan and first move</strong>
         </div>
-        <button className="primary-button" type="button" onClick={onApprove}>
+        <button className="primary-button" data-tour="approve-plan" type="button" onClick={onApprove}>
           <ShieldCheck size={17} aria-hidden="true" />
           Approve recovery plan
         </button>

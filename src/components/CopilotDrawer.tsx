@@ -15,7 +15,7 @@ interface Message {
 const prompts: Record<WorkspaceStep, string[]> = {
   sources: ["What should I include?", "Why keep this to one commitment?", "What happens after reconstruction?"],
   review: ["What should I verify next?", "Why is this claim inferred?", "Which facts conflict?"],
-  recovery: ["Compare repair and renegotiate", "Which path is lowest risk?", "What needs external approval?"],
+  recovery: ["I'm overwhelmed and not sure what to do first. Based only on the evidence, what should I do next and why?", "Compare repair and renegotiate", "What needs external approval?"],
   approve: ["What should not be claimed?", "Make the draft more direct", "Is this first move safe?"],
 };
 
@@ -117,14 +117,18 @@ export function CopilotDrawer({
             <p className="eyebrow">Case-bounded assistant</p>
             <h2 id="copilot-title">Ask Meridian</h2>
           </div>
-          <button ref={closeRef} className="icon-button" type="button" aria-label="Close Ask Meridian" onClick={onClose}><X size={18} /></button>
+          <button ref={closeRef} className="icon-button" data-tour="close-copilot" type="button" aria-label="Close Ask Meridian" onClick={onClose}><X size={18} /></button>
         </header>
 
         <div className="copilot-boundary"><ShieldCheck size={15} /><span>Selected evidence only. No external action.</span></div>
 
         <div className="copilot-messages" aria-live="polite">
-          {messages.map((message) => (
-            <article key={message.id} className={`copilot-message copilot-message--${message.role}`}>
+          {messages.map((message, index) => (
+            <article
+              key={message.id}
+              className={`copilot-message copilot-message--${message.role}`}
+              data-tour={message.role === "assistant" && index === messages.length - 1 && messages.length > 1 ? "copilot-response" : undefined}
+            >
               {message.role === "assistant" ? <span className="copilot-avatar"><Bot size={15} /></span> : null}
               <div>
                 {message.role === "assistant" ? <small>{message.mode === "gemini" ? "Gemini" : "Guided response"}</small> : null}
@@ -147,7 +151,7 @@ export function CopilotDrawer({
         </div>
 
         <div className="copilot-prompts">
-          {prompts[step].map((prompt) => <button key={prompt} type="button" disabled={busy} onClick={() => void submit(prompt)}>{prompt}</button>)}
+          {prompts[step].map((prompt, index) => <button data-tour={step === "recovery" && index === 0 ? "copilot-demo-prompt" : undefined} key={prompt} type="button" disabled={busy} onClick={() => void submit(prompt)}>{prompt}</button>)}
         </div>
 
         <form className="copilot-composer" onSubmit={onSubmit}>

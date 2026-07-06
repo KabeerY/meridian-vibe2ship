@@ -3,26 +3,33 @@ import {
   Bot,
   ChevronRight,
   CircleHelp,
+  CheckCircle2,
   FlaskConical,
   History,
+  LogOut,
   Menu,
   Sparkles,
+  UserRound,
   Waypoints,
   X,
 } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AccessPage, type AccountIdentity } from "./components/AccessPage";
 import { ApprovalWorkspace } from "./components/ApprovalWorkspace";
 import { ArtifactIntake } from "./components/ArtifactIntake";
 import { CopilotDrawer } from "./components/CopilotDrawer";
 import { DemoWorkspaceMenu } from "./components/DemoWorkspaceMenu";
 import { EvidenceDrawer } from "./components/EvidenceDrawer";
+import { GuidedTour, type GuidedTourStep } from "./components/GuidedTour";
 import { GuidanceDrawer, GuideCoach } from "./components/GuidanceDrawer";
+import { LandingPage } from "./components/LandingPage";
 import { RecoveryWorkspace } from "./components/RecoveryWorkspace";
 import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { TraceDrawer } from "./components/TraceDrawer";
 import { demoArtifacts, initialTrace } from "./data/demo";
 import { persistRecovery, reconstructCommitment } from "./lib/api";
+import { signOutAccount } from "./lib/auth";
 import type {
   Artifact,
   Claim,
@@ -39,6 +46,194 @@ const steps: Array<{ id: WorkspaceStep; label: string; shortLabel: string }> = [
   { id: "review", label: "Current state", shortLabel: "State" },
   { id: "recovery", label: "Recovery", shortLabel: "Recovery" },
   { id: "approve", label: "Approve", shortLabel: "Approve" },
+];
+
+type Surface = "landing" | "access" | "workspace";
+type SessionIdentity = ({ kind: "account" } & AccountIdentity) | { kind: "demo"; name: string; email: string };
+const sessionStorageKey = "meridian-session";
+
+function readStoredSession(): SessionIdentity | null {
+  try {
+    const value = window.sessionStorage.getItem(sessionStorageKey);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<SessionIdentity>;
+    if (parsed.kind === "account" && parsed.uid && parsed.email && parsed.name) return parsed as SessionIdentity;
+    if (parsed.kind === "demo" && parsed.email && parsed.name) return parsed as SessionIdentity;
+  } catch {
+    window.sessionStorage.removeItem(sessionStorageKey);
+  }
+  return null;
+}
+
+function storeSession(session: SessionIdentity | null) {
+  if (session) window.sessionStorage.setItem(sessionStorageKey, JSON.stringify(session));
+  else window.sessionStorage.removeItem(sessionStorageKey);
+}
+
+const guidedDemoSteps: GuidedTourStep[] = [
+  {
+    id: "sources-intro",
+    target: '[data-tour="sources-overview"]',
+    eyebrow: "Mission 1 · Reconstruct",
+    title: "A client release plan stopped matching reality.",
+    body: "You are helping Arjun recover one at-risk webhook migration. Meridian begins with evidence, not another reminder.",
+  },
+  {
+    id: "source-bundle",
+    target: '[data-tour="source-bundle"]',
+    eyebrow: "Evidence bundle",
+    title: "The commitment is scattered across six tools.",
+    body: "Email changed scope, Slack holds a dependency, GitHub and CI show progress, Linear is stale, and Calendar explains lost work time.",
+  },
+  {
+    id: "reconstruct",
+    target: '[data-tour="reconstruct"]',
+    eyebrow: "Live Gemini action",
+    title: "Turn fragments into one current-state brief.",
+    body: "Click the highlighted button. Gemini will extract claims, preserve contradictions, and propose recovery paths from only these sources.",
+    action: true,
+    placement: "top",
+  },
+  {
+    id: "review-brief",
+    target: '[data-tour="review-brief"]',
+    eyebrow: "Mission 2 · Verify",
+    title: "AI output is inspectable, not authoritative.",
+    body: "Green facts are source-stated. Amber inferences, conflicts, and missing answers require your judgment before planning can continue.",
+  },
+  {
+    id: "confirm-inference",
+    target: '[data-tour="confirm-inference"]',
+    eyebrow: "Human correction",
+    title: "Confirm what the combined evidence supports.",
+    body: "The implementation-state claim joins PR progress with passing CI evidence. Confirm it after inspection.",
+    action: true,
+  },
+  {
+    id: "resolve-conflict",
+    target: '[data-tour="resolve-conflict"]',
+    eyebrow: "Contradiction",
+    title: "Two systems disagree about the deadline.",
+    body: "Meridian refuses to silently choose. Open the conflict and decide which source now governs the commitment.",
+    action: true,
+  },
+  {
+    id: "deadline-option",
+    target: '[data-tour="deadline-option"]',
+    eyebrow: "Authority check",
+    title: "Choose the latest external commitment.",
+    body: "The client email is newer and externally authoritative. Select it while preserving the older ticket in history.",
+    action: true,
+  },
+  {
+    id: "preserve-unknown",
+    target: '[data-tour="preserve-unknown"]',
+    eyebrow: "Honest uncertainty",
+    title: "A trustworthy plan can contain an unknown.",
+    body: "There is no evidence that fixture results will satisfy the client. Keep this unresolved instead of allowing the AI to invent certainty.",
+    action: true,
+  },
+  {
+    id: "confirm-state",
+    target: '[data-tour="confirm-state"]',
+    eyebrow: "State checkpoint",
+    title: "The commitment is now trustworthy enough to recover.",
+    body: "Confirm the reviewed state to unlock recovery choices.",
+    action: true,
+    placement: "top",
+  },
+  {
+    id: "recovery-paths",
+    target: '[data-tour="recovery-paths"]',
+    eyebrow: "Mission 3 · Choose",
+    title: "Recovery is more than moving the due date.",
+    body: "Meridian tests repair, deliberate delay, rebuild, drop, and renegotiate against the same confirmed evidence.",
+  },
+  {
+    id: "open-copilot",
+    target: '[data-tour="ask-meridian"]',
+    eyebrow: "Ask Meridian",
+    title: "Use the agent when the choice still feels heavy.",
+    body: "Open the case-bounded assistant. It can reason over this recovery, but it cannot browse unrelated data or act externally.",
+    action: true,
+  },
+  {
+    id: "copilot-prompt",
+    target: '[data-tour="copilot-demo-prompt"]',
+    eyebrow: "Live Gemini conversation",
+    title: "Ask for one calm, evidence-based first move.",
+    body: "Choose the prepared prompt. Gemini must respond from this case and explain why, without diagnosing the user or hiding uncertainty.",
+    action: true,
+  },
+  {
+    id: "copilot-response",
+    target: '[data-tour="copilot-response"]',
+    eyebrow: "Grounded response",
+    title: "The agent turns overwhelm into a decision cue.",
+    body: "Notice the operational answer and source references. Meridian provides leverage without pretending it has authority.",
+  },
+  {
+    id: "close-copilot",
+    target: '[data-tour="close-copilot"]',
+    eyebrow: "Return to the decision",
+    title: "Bring the answer back into the recovery flow.",
+    body: "Close the assistant and choose the path that preserves the valid core.",
+    action: true,
+  },
+  {
+    id: "repair-path",
+    target: '[data-tour="repair-path"]',
+    eyebrow: "Evidence-matched path",
+    title: "Repair what broke without rebuilding what still works.",
+    body: "Select the recommended repair path. Its basis, consequence, and first valid move will remain visible before approval.",
+    action: true,
+  },
+  {
+    id: "prepare-move",
+    target: '[data-tour="prepare-move"]',
+    eyebrow: "Make it executable",
+    title: "Convert the chosen path into a local next move.",
+    body: "Prepare the plan and stakeholder draft. Nothing is sent or scheduled.",
+    action: true,
+    placement: "top",
+  },
+  {
+    id: "first-move",
+    target: '[data-tour="first-move"]',
+    eyebrow: "Mission 4 · Approve",
+    title: "The comeback starts with one bounded action.",
+    body: "The first move can happen locally and does not depend on pretending that blank calendar time is available.",
+  },
+  {
+    id: "status-draft",
+    target: '[data-tour="status-draft"]',
+    eyebrow: "Human-controlled communication",
+    title: "The stakeholder update remains editable and unsent.",
+    body: "Meridian drafts the message, separates facts from assumptions, and leaves final wording and delivery to the user.",
+  },
+  {
+    id: "approve-plan",
+    target: '[data-tour="approve-plan"]',
+    eyebrow: "Decision boundary",
+    title: "Approve the recovery, not an external side effect.",
+    body: "Record the reviewed state, selected path, and first move. This still does not send email or modify a calendar.",
+    action: true,
+    placement: "top",
+  },
+  {
+    id: "recovery-result",
+    target: '[data-tour="recovery-result"]',
+    eyebrow: "Recovery complete",
+    title: "The broken plan now has a defensible comeback.",
+    body: "Meridian preserves the evidence, decisions, selected path, and approved first move as one traceable recovery record.",
+  },
+  {
+    id: "safe-actions",
+    target: '[data-tour="safe-actions"]',
+    eyebrow: "Safe handoff",
+    title: "Calendar and email stay previews until the destination confirms.",
+    body: "Meridian can prepare both actions, but Google Calendar and Gmail remain the final confirmation surfaces. No OAuth access is required for this demo.",
+  },
 ];
 
 function makeTrace(
@@ -95,6 +290,14 @@ function StageRail({
 }
 
 export default function App() {
+  const [surface, setSurface] = useState<Surface>(() => {
+    if (window.location.pathname.startsWith("/access")) return "access";
+    if (window.location.pathname.startsWith("/workspace")) return "workspace";
+    return "landing";
+  });
+  const [session, setSession] = useState<SessionIdentity | null>(readStoredSession);
+  const [tourIndex, setTourIndex] = useState<number | null>(null);
+  const [tourComplete, setTourComplete] = useState(false);
   const [step, setStep] = useState<WorkspaceStep>("sources");
   const [artifacts, setArtifacts] = useState<Artifact[]>(demoArtifacts);
   const [reconstruction, setReconstruction] = useState<Reconstruction | null>(null);
@@ -110,7 +313,7 @@ export default function App() {
   const [traceOpen, setTraceOpen] = useState(false);
   const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
-  const [guideOpen, setGuideOpen] = useState(() => window.localStorage.getItem("meridian-guide-seen") !== "true");
+  const [guideOpen, setGuideOpen] = useState(false);
   const [guideActive, setGuideActive] = useState(false);
   const [demoMenuOpen, setDemoMenuOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
@@ -122,6 +325,65 @@ export default function App() {
   );
 
   const activePath = reconstruction?.paths.find((path) => path.type === selectedPath) ?? null;
+  const activeTourStep = tourIndex === null ? null : guidedDemoSteps[tourIndex] ?? null;
+
+  useEffect(() => {
+    function handleHistory() {
+      const path = window.location.pathname;
+      setSurface(path.startsWith("/workspace") ? "workspace" : path.startsWith("/access") ? "access" : "landing");
+    }
+    window.addEventListener("popstate", handleHistory);
+    return () => window.removeEventListener("popstate", handleHistory);
+  }, []);
+
+  function navigateSurface(next: Surface) {
+    const path = next === "landing" ? "/" : next === "access" ? "/access" : "/workspace";
+    window.history.pushState({}, "", path);
+    setSurface(next);
+    window.scrollTo({ top: 0 });
+  }
+
+  function enterDemo() {
+    reset();
+    const demoSession: SessionIdentity = { kind: "demo", name: "Guided demo", email: "Synthetic workspace" };
+    setSession(demoSession);
+    storeSession(demoSession);
+    setGuideOpen(false);
+    setGuideActive(false);
+    setTourComplete(false);
+    setTourIndex(0);
+    navigateSurface("workspace");
+  }
+
+  function enterAccount(account: AccountIdentity) {
+    reset();
+    const accountSession: SessionIdentity = { kind: "account", ...account };
+    setSession(accountSession);
+    storeSession(accountSession);
+    setTourIndex(null);
+    setTourComplete(false);
+    navigateSurface("workspace");
+  }
+
+  const advanceTour = useCallback(() => {
+    setTourIndex((current) => {
+      if (current === null) return null;
+      if (current >= guidedDemoSteps.length - 1) {
+        window.setTimeout(() => setTourComplete(true), 0);
+        return null;
+      }
+      return current + 1;
+    });
+  }, []);
+
+  const backTour = useCallback(() => {
+    setTourIndex((current) => current === null ? null : Math.max(0, current - 1));
+  }, []);
+
+  function exitTour() {
+    setTourIndex(null);
+    setTourComplete(false);
+  }
 
   function addTrace(event: TraceEvent) {
     setTrace((events) => [...events, event]);
@@ -302,6 +564,38 @@ export default function App() {
     setGuideOpen(true);
   }
 
+  async function leaveWorkspace() {
+    if (session?.kind === "account") {
+      try {
+        await signOutAccount();
+      } catch {
+        // Local navigation still succeeds if the remote auth session already expired.
+      }
+    }
+    setSession(null);
+    storeSession(null);
+    setTourIndex(null);
+    setTourComplete(false);
+    setDemoMenuOpen(false);
+    navigateSurface("landing");
+  }
+
+  if (surface === "landing") {
+    return (
+      <MotionConfig reducedMotion="user">
+        <LandingPage onStart={() => navigateSurface("access")} onSignIn={() => navigateSurface("access")} />
+      </MotionConfig>
+    );
+  }
+
+  if (surface === "access") {
+    return (
+      <MotionConfig reducedMotion="user">
+        <AccessPage onBack={() => navigateSurface("landing")} onDemo={enterDemo} onAccount={enterAccount} />
+      </MotionConfig>
+    );
+  }
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="app-shell">
@@ -321,7 +615,7 @@ export default function App() {
             <button className="topbar-button topbar-button--help" type="button" title="Open recovery guide" aria-label="Open recovery guide" onClick={() => setGuideOpen(true)}>
               <CircleHelp size={17} aria-hidden="true" />
             </button>
-            <button className="topbar-button topbar-button--copilot" type="button" aria-label="Ask Meridian" onClick={() => setCopilotOpen(true)}>
+            <button className="topbar-button topbar-button--copilot" data-tour="ask-meridian" type="button" aria-label="Ask Meridian" onClick={() => setCopilotOpen(true)}>
               <Bot size={17} aria-hidden="true" />
               <span>Ask Meridian</span>
             </button>
@@ -329,9 +623,9 @@ export default function App() {
               <History size={17} aria-hidden="true" />
               <span>Trace</span>
             </button>
-            <button className="demo-workspace-button" type="button" aria-label="Open demo workspace menu" onClick={() => setDemoMenuOpen(true)}>
-              <FlaskConical size={15} aria-hidden="true" />
-              <span>Demo</span>
+            <button className="demo-workspace-button" type="button" aria-label="Open workspace menu" onClick={() => setDemoMenuOpen(true)}>
+              {session?.kind === "account" ? <UserRound size={15} aria-hidden="true" /> : <FlaskConical size={15} aria-hidden="true" />}
+              <span>{session?.kind === "account" ? session.name : "Demo"}</span>
             </button>
             <button className="mobile-menu-button" type="button" aria-label="Open demo workspace menu" onClick={() => setDemoMenuOpen(true)}><Menu size={19} /></button>
           </div>
@@ -435,8 +729,12 @@ export default function App() {
         ) : null}
         {demoMenuOpen ? (
           <DemoWorkspaceMenu
+            isAccount={session?.kind === "account"}
+            title={session?.kind === "account" ? session.name : "Demo workspace"}
+            detail={session?.email ?? "No account or login required"}
             onClose={() => setDemoMenuOpen(false)}
             onOpenGuide={restartGuide}
+            onExit={() => void leaveWorkspace()}
             onReset={() => {
               setDemoMenuOpen(false);
               reset();
@@ -456,6 +754,31 @@ export default function App() {
               openEvidence(claimId);
             }}
           />
+        ) : null}
+        {activeTourStep && tourIndex !== null ? (
+          <GuidedTour
+            step={activeTourStep}
+            index={tourIndex}
+            total={guidedDemoSteps.length}
+            onNext={advanceTour}
+            onBack={backTour}
+            onExit={exitTour}
+          />
+        ) : null}
+        {tourComplete ? (
+          <div className="menu-layer tour-complete-layer" role="presentation">
+            <div className="menu-backdrop" />
+            <section className="tour-complete" role="dialog" aria-modal="true" aria-labelledby="tour-complete-title">
+              <span className="tour-complete-mark"><CheckCircle2 size={28} /></span>
+              <p className="eyebrow">Guided rescue complete</p>
+              <h2 id="tour-complete-title">You turned a broken plan into one defensible next move.</h2>
+              <p>Gemini reconstructed the state, you corrected uncertainty, chose the recovery, and kept every external action under human control.</p>
+              <div className="tour-complete-actions">
+                <button className="primary-button" type="button" onClick={() => setTourComplete(false)}>Explore the recovery desk</button>
+                <button className="secondary-button" type="button" onClick={() => void leaveWorkspace()}><LogOut size={15} /> Return to Meridian</button>
+              </div>
+            </section>
+          </div>
         ) : null}
       </div>
     </MotionConfig>

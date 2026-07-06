@@ -1,5 +1,41 @@
 import type { Artifact, Reconstruction, TraceEvent } from "../types";
 
+function atDayOffset(days: number, hour: number, minute = 0) {
+  const value = new Date();
+  value.setDate(value.getDate() + days);
+  value.setHours(hour, minute, 0, 0);
+  return value;
+}
+
+function weekday(value: Date) {
+  return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(value);
+}
+
+function monthDay(value: Date) {
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" }).format(value);
+}
+
+function namedDate(value: Date) {
+  return `${weekday(value)}, ${monthDay(value)}`;
+}
+
+const clientMessageAt = atDayOffset(-2, 9, 14);
+const dependencyUpdateAt = atDayOffset(-1, 10, 8);
+const pullRequestAt = atDayOffset(-1, 11, 42);
+const oldTicketAt = atDayOffset(-6, 16, 20);
+const ciRunAt = atDayOffset(-1, 11, 48);
+const focusIncidentAt = atDayOffset(-2, 14);
+const credentialHandoffAt = atDayOffset(1, 12);
+const clientDeadlineAt = atDayOffset(3, 17);
+const internalDeadlineAt = atDayOffset(4, 17);
+const movedDeadlineAt = atDayOffset(4, 10);
+
+const credentialDay = weekday(credentialHandoffAt);
+const clientDeadlineDate = namedDate(clientDeadlineAt);
+const clientDeadlineLabel = `${clientDeadlineDate} · 5:00 PM`;
+const internalDeadlineDate = namedDate(internalDeadlineAt);
+const movedDeadlineLabel = `${namedDate(movedDeadlineAt)} morning`;
+
 export const demoArtifacts: Artifact[] = [
   {
     id: "client-email",
@@ -7,10 +43,10 @@ export const demoArtifacts: Artifact[] = [
     title: "Re: Acme webhook release scope",
     source: "Gmail",
     author: "Lena Ortiz · Acme PM",
-    timestamp: "2026-06-29T09:14:00+05:30",
+    timestamp: clientMessageAt.toISOString(),
     selected: true,
     content:
-      "Hi Arjun — keeping Thursday, July 2 at 5:00 PM as the production handoff. The release must now include refund.completed and dispute.opened events, with idempotent handling for duplicate deliveries. We no longer need the polling fallback. Please include the implementation, passing integration tests, and a short rollout note.",
+      `Hi Arjun — keeping ${clientDeadlineDate} at 5:00 PM as the production handoff. The release must now include refund.completed and dispute.opened events, with idempotent handling for duplicate deliveries. We no longer need the polling fallback. Please include the implementation, passing integration tests, and a short rollout note.`,
   },
   {
     id: "slack-dependency",
@@ -18,10 +54,10 @@ export const demoArtifacts: Artifact[] = [
     title: "#acme-integration · credential handoff",
     source: "Slack",
     author: "Neel Shah · Platform engineering",
-    timestamp: "2026-06-30T10:08:00+05:30",
+    timestamp: dependencyUpdateAt.toISOString(),
     selected: true,
     content:
-      "Acme rotated the sandbox account and the new credentials are waiting on their security approval. Best estimate is Tuesday at 12:00 PM. Use the signed fixture payloads for local work, but do not call production or describe fixture results as a sandbox pass.",
+      `Acme rotated the sandbox account and the new credentials are waiting on their security approval. Best estimate is ${credentialDay} at 12:00 PM. Use the signed fixture payloads for local work, but do not call production or describe fixture results as a sandbox pass.`,
   },
   {
     id: "github-pr",
@@ -29,7 +65,7 @@ export const demoArtifacts: Artifact[] = [
     title: "PR #184 · migrate Acme payment webhooks",
     source: "GitHub",
     author: "Arjun Mehta",
-    timestamp: "2026-06-30T11:42:00+05:30",
+    timestamp: pullRequestAt.toISOString(),
     selected: true,
     content:
       "Signature verification, event parsing, and the base charge flow are complete. Refund and dispute handlers are TODO. Retry queue wiring is partial. The current branch has two failing duplicate-delivery tests and has not been validated against the rotated sandbox account.",
@@ -40,10 +76,10 @@ export const demoArtifacts: Artifact[] = [
     title: "PAY-248 · Acme webhook migration",
     source: "Linear",
     author: "Payments team",
-    timestamp: "2026-06-25T16:20:00+05:30",
+    timestamp: oldTicketAt.toISOString(),
     selected: true,
     content:
-      "Due Friday, July 3. Acceptance criteria: handle charge.succeeded events and retain polling as a fallback when webhook delivery is delayed. Refund and dispute events are out of scope for this iteration.",
+      `Due ${internalDeadlineDate}. Acceptance criteria: handle charge.succeeded events and retain polling as a fallback when webhook delivery is delayed. Refund and dispute events are out of scope for this iteration.`,
   },
   {
     id: "ci-run",
@@ -51,7 +87,7 @@ export const demoArtifacts: Artifact[] = [
     title: "CI run #9281 · payment integration suite",
     source: "GitHub Actions",
     author: "Continuous integration",
-    timestamp: "2026-06-30T11:48:00+05:30",
+    timestamp: ciRunAt.toISOString(),
     selected: true,
     content:
       "48 tests passed, 2 failed. Failure 1: duplicate refund delivery creates a second ledger entry. Failure 2: retry worker emits an event without the original idempotency key. Signature verification and existing charge-event tests passed.",
@@ -62,7 +98,7 @@ export const demoArtifacts: Artifact[] = [
     title: "Webhook migration focus block",
     source: "Google Calendar",
     author: "Arjun Mehta",
-    timestamp: "2026-06-29T14:00:00+05:30",
+    timestamp: focusIncidentAt.toISOString(),
     selected: true,
     content:
       "Planned focus block from 2:00 PM to 5:00 PM was missed because Arjun joined a production checkout incident from 1:40 PM to 4:20 PM. No replacement work block has been confirmed.",
@@ -73,7 +109,7 @@ export const demoReconstruction: Reconstruction = {
   commitment: {
     title: "Acme payment webhook migration",
     owner: "Arjun Mehta · Software engineer",
-    deadline: "Thursday, July 2 · 5:00 PM",
+    deadline: clientDeadlineLabel,
     health: "at_risk",
     healthLabel: "At risk, still recoverable",
     summary:
@@ -91,12 +127,12 @@ export const demoReconstruction: Reconstruction = {
       id: "claim-deadline",
       category: "commitment",
       label: "Current delivery commitment",
-      value: "Production handoff is Thursday, July 2 at 5:00 PM.",
+      value: `Production handoff is ${clientDeadlineDate} at 5:00 PM.`,
       state: "explicit",
       evidence: [
         {
           sourceId: "client-email",
-          quote: "keeping Thursday, July 2 at 5:00 PM as the production handoff",
+          quote: `keeping ${clientDeadlineDate} at 5:00 PM as the production handoff`,
           relationship: "Latest deadline stated by the client owner",
         },
       ],
@@ -159,12 +195,12 @@ export const demoReconstruction: Reconstruction = {
       id: "claim-blocker",
       category: "blocker",
       label: "Sandbox validation is blocked",
-      value: "Rotated sandbox credentials are expected Tuesday at 12:00 PM.",
+      value: `Rotated sandbox credentials are expected ${credentialDay} at 12:00 PM.`,
       state: "explicit",
       evidence: [
         {
           sourceId: "slack-dependency",
-          quote: "the new credentials are waiting on their security approval. Best estimate is Tuesday at 12:00 PM.",
+          quote: `the new credentials are waiting on their security approval. Best estimate is ${credentialDay} at 12:00 PM.`,
           relationship: "States the external dependency and expected handoff",
         },
       ],
@@ -188,18 +224,18 @@ export const demoReconstruction: Reconstruction = {
       id: "claim-conflict",
       category: "timing",
       label: "Deadline conflict",
-      value: "The older Linear ticket says Friday; the latest client email says Thursday at 5:00 PM.",
+      value: `The older Linear ticket says ${internalDeadlineDate}; the latest client email says ${clientDeadlineDate} at 5:00 PM.`,
       state: "conflicting",
       reviewNote: "The client email is newer and externally authoritative, but the system will not choose silently.",
       evidence: [
         {
           sourceId: "linear-ticket",
-          quote: "Due Friday, July 3.",
+          quote: `Due ${internalDeadlineDate}.`,
           relationship: "Older internal delivery record",
         },
         {
           sourceId: "client-email",
-          quote: "keeping Thursday, July 2 at 5:00 PM as the production handoff",
+          quote: `keeping ${clientDeadlineDate} at 5:00 PM as the production handoff`,
           relationship: "Latest client commitment",
         },
       ],
@@ -229,14 +265,14 @@ export const demoReconstruction: Reconstruction = {
           id: "client-deadline",
           sourceId: "client-email",
           label: "Client production handoff",
-          value: "Thursday, July 2 · 5:00 PM",
+          value: clientDeadlineLabel,
           reason: "Latest instruction from the external commitment owner",
         },
         {
           id: "linear-deadline",
           sourceId: "linear-ticket",
           label: "Internal ticket deadline",
-          value: "Friday, July 3",
+          value: internalDeadlineDate,
           reason: "Older plan created before the client expanded scope",
         },
       ],
@@ -248,7 +284,7 @@ export const demoReconstruction: Reconstruction = {
       title: "Repair the release plan",
       summary: "Preserve the working core and repair only the changed event handlers, retries, and validation path.",
       basis: "The verified foundation remains useful and signed fixtures unblock most implementation work.",
-      consequence: "Tuesday becomes the critical sandbox-validation day, leaving a narrow rollout window.",
+      consequence: `${credentialDay} becomes the critical sandbox-validation day, leaving a narrow rollout window.`,
       nextMove: "Split PR #184 into a stable core and a focused idempotency patch using signed fixtures.",
       steps: [
         {
@@ -261,11 +297,11 @@ export const demoReconstruction: Reconstruction = {
         },
         {
           title: "Validate when the blocker clears",
-          detail: "Run the focused sandbox suite Tuesday at noon, then prepare the rollout note and production handoff.",
+          detail: `Run the focused sandbox suite ${credentialDay} at noon, then prepare the rollout note and production handoff.`,
         },
       ],
       draft:
-        "Hi Lena,\n\nQuick status on the Acme webhook migration: signature verification, event parsing, and the existing charge flow are intact. I am separating those passing changes from the new refund and dispute handlers, then repairing duplicate-event idempotency against signed fixtures.\n\nThe rotated sandbox credentials are expected Tuesday at noon. I will run the focused sandbox suite as soon as they arrive and flag any material risk to Thursday's 5:00 PM handoff immediately.\n\nThanks,\nArjun",
+        `Hi Lena,\n\nQuick status on the Acme webhook migration: signature verification, event parsing, and the existing charge flow are intact. I am separating those passing changes from the new refund and dispute handlers, then repairing duplicate-event idempotency against signed fixtures.\n\nThe rotated sandbox credentials are expected ${credentialDay} at noon. I will run the focused sandbox suite as soon as they arrive and flag any material risk to the ${clientDeadlineDate} 5:00 PM handoff immediately.\n\nThanks,\nArjun`,
       available: true,
       recommended: true,
     },
@@ -274,15 +310,15 @@ export const demoReconstruction: Reconstruction = {
       title: "Deliberately wait for credentials",
       summary: "Pause environment-dependent validation while preserving the confirmed implementation state.",
       basis: "The remaining external dependency has a specific expected handoff time.",
-      consequence: "Avoids false confidence but compresses all sandbox correction and rollout work into Tuesday afternoon.",
-      nextMove: "Finish fixture-based idempotency tests and set a Tuesday 12:15 PM validation checkpoint.",
+      consequence: `Avoids false confidence but compresses all sandbox correction and rollout work into ${credentialDay} afternoon.`,
+      nextMove: `Finish fixture-based idempotency tests and set a ${credentialDay} 12:15 PM validation checkpoint.`,
       steps: [
         { title: "Finish local evidence", detail: "Complete all deterministic fixture tests that do not require Acme credentials." },
         { title: "Hold the environment claim", detail: "Keep sandbox validation explicitly unresolved until real credentials arrive." },
-        { title: "Resume at the checkpoint", detail: "Run the targeted sandbox suite Tuesday at 12:15 PM and reassess delivery risk." },
+        { title: "Resume at the checkpoint", detail: `Run the targeted sandbox suite ${credentialDay} at 12:15 PM and reassess delivery risk.` },
       ],
       draft:
-        "Hi Lena,\n\nThe integration core is progressing, but final sandbox validation remains blocked on the rotated credentials expected Tuesday at noon. I am completing the fixture-based idempotency suite now and will run the focused sandbox checks immediately after access is restored.\n\nI will send a confirmed delivery-risk update after that checkpoint.\n\nThanks,\nArjun",
+        `Hi Lena,\n\nThe integration core is progressing, but final sandbox validation remains blocked on the rotated credentials expected ${credentialDay} at noon. I am completing the fixture-based idempotency suite now and will run the focused sandbox checks immediately after access is restored.\n\nI will send a confirmed delivery-risk update after that checkpoint.\n\nThanks,\nArjun`,
       available: true,
     },
     {
@@ -290,7 +326,7 @@ export const demoReconstruction: Reconstruction = {
       title: "Rebuild the event pipeline",
       summary: "Replace the current handler structure with a fresh event-routing and idempotency boundary.",
       basis: "Useful only if the existing retry design cannot support the expanded event types safely.",
-      consequence: "Cleaner architecture, but substantially more implementation and regression risk before Thursday.",
+      consequence: `Cleaner architecture, but substantially more implementation and regression risk before ${clientDeadlineDate}.`,
       nextMove: "Draft a minimal event-routing interface and prove it against the two failing duplicate-delivery cases.",
       steps: [
         { title: "Define the new boundary", detail: "Specify one event-routing and idempotency contract for charge, refund, and dispute events." },
@@ -298,7 +334,7 @@ export const demoReconstruction: Reconstruction = {
         { title: "Decide before migration", detail: "Compare repair and rebuild cost before moving the passing charge flow." },
       ],
       draft:
-        "Hi Lena,\n\nThe expanded event scope exposed a structural issue in the current retry path. I am testing a smaller unified idempotency boundary before deciding whether the existing handler design remains safe for Thursday's release.\n\nI will confirm the implementation route after the duplicate-delivery proof is complete.\n\nThanks,\nArjun",
+        `Hi Lena,\n\nThe expanded event scope exposed a structural issue in the current retry path. I am testing a smaller unified idempotency boundary before deciding whether the existing handler design remains safe for the ${clientDeadlineDate} release.\n\nI will confirm the implementation route after the duplicate-delivery proof is complete.\n\nThanks,\nArjun`,
       available: true,
     },
     {
@@ -322,14 +358,14 @@ export const demoReconstruction: Reconstruction = {
       summary: "Request a phased event rollout or move the production handoff after sandbox validation.",
       basis: "The client expanded scope while a client-controlled credential delay reduced the validation window.",
       consequence: "Lowers release risk but changes an external commitment and requires client approval.",
-      nextMove: "Draft a two-option request: phase refunds first or move the full handoff to Friday morning.",
+      nextMove: `Draft a two-option request: phase refunds first or move the full handoff to ${movedDeadlineLabel}.`,
       steps: [
         { title: "Show the changed evidence", detail: "State the added events, failing idempotency cases, and delayed sandbox access without blame." },
-        { title: "Offer bounded options", detail: "Propose either a phased event scope or a Friday morning full handoff." },
+        { title: "Offer bounded options", detail: `Propose either a phased event scope or a ${movedDeadlineLabel} full handoff.` },
         { title: "Wait for approval", detail: "Do not change the external commitment until the client explicitly chooses an option." },
       ],
       draft:
-        "Hi Lena,\n\nThe added refund and dispute events are workable, but the rotated sandbox credentials arriving Tuesday at noon leave a narrow validation window before Thursday's production handoff.\n\nTo protect the release, could we choose one of these options: ship the refund path first and phase disputes next, or move the complete handoff to Friday morning after full sandbox validation?\n\nI can proceed with either option as soon as you confirm.\n\nThanks,\nArjun",
+        `Hi Lena,\n\nThe added refund and dispute events are workable, but the rotated sandbox credentials arriving ${credentialDay} at noon leave a narrow validation window before the ${clientDeadlineDate} production handoff.\n\nTo protect the release, could we choose one of these options: ship the refund path first and phase disputes next, or move the complete handoff to ${movedDeadlineLabel} after full sandbox validation?\n\nI can proceed with either option as soon as you confirm.\n\nThanks,\nArjun`,
       available: true,
     },
   ],

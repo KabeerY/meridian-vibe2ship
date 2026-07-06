@@ -44,6 +44,7 @@ function PathOption({
     <button
       className={`path-option${selected ? " path-option--selected" : ""}${!path.available ? " path-option--unavailable" : ""}`}
       type="button"
+      data-tour={path.type === "repair" ? "repair-path" : undefined}
       disabled={!path.available}
       aria-pressed={selected}
       onClick={onSelect}
@@ -92,7 +93,7 @@ export function RecoveryWorkspace({
       </header>
 
       <div className="recovery-layout">
-        <section className="path-list-section" aria-labelledby="paths-heading">
+        <section className="path-list-section" data-tour="recovery-paths" aria-labelledby="paths-heading">
           <div className="section-heading-row">
             <div>
               <p className="eyebrow">Available paths</p>
@@ -161,7 +162,7 @@ export function RecoveryWorkspace({
           <span className="dock-kicker">Recovery path</span>
           <strong>{activePath ? activePath.title : "No path selected"}</strong>
         </div>
-        <button className="primary-button" type="button" disabled={!activePath} onClick={onPrepare}>
+        <button className="primary-button" data-tour="prepare-move" type="button" disabled={!activePath} onClick={onPrepare}>
           Prepare next move
           <ChevronRight size={17} aria-hidden="true" />
         </button>
