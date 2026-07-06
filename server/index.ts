@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type GenerateContentParameters, type GenerateContentResponse } from "@google/genai";
 import { FieldValue, Firestore } from "@google-cloud/firestore";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
@@ -137,6 +137,38 @@ const copilotAnswerSchema = z.object({
   referencedClaimIds: z.array(z.string()).max(6),
   suggestedQuestions: z.array(z.string()).min(2).max(4),
 });
+
+function geminiModelCandidates() {
+  return [...new Set([
+    process.env.GEMINI_MODEL ?? "gemini-3.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
+  ])];
+}
+
+function isRetryableGeminiError(reason: unknown) {
+  const status = typeof reason === "object" && reason && "status" in reason
+    ? Number((reason as { status?: unknown }).status)
+    : 0;
+  return status === 429 || status >= 500;
+}
+
+async function generateWithModelFallback(
+  ai: GoogleGenAI,
+  input: Omit<GenerateContentParameters, "model">,
+): Promise<GenerateContentResponse> {
+  let lastError: unknown;
+  for (const model of geminiModelCandidates()) {
+    try {
+      return await ai.models.generateContent({ ...input, model });
+    } catch (reason) {
+      lastError = reason;
+      if (!isRetryableGeminiError(reason)) throw reason;
+      console.warn(`Gemini model ${model} was temporarily unavailable; trying the next configured Flash model.`);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Every configured Gemini Flash model was unavailable.");
+}
 
 function guidedCopilotAnswer(input: z.infer<typeof copilotRequestSchema>) {
   const normalized = input.message.toLowerCase();
@@ -370,8 +402,7 @@ ${JSON.stringify(artifactPacket, null, 2)}
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? "gemini-3.5-flash",
+    const result = await generateWithModelFallback(ai, {
       contents: prompt,
       config: {
         temperature: 0.2,
@@ -453,8 +484,7 @@ ${input.message}
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL ?? "gemini-3.5-flash",
+    const result = await generateWithModelFallback(ai, {
       contents: prompt,
       config: {
         temperature: 0.2,
