@@ -1,0 +1,16 @@
+.gcloudignore
+.git
+.gitignore
+.DS_Store
+.env
+.env.*
+*.md
+node_modules/
+dist/
+dist-server/
+research/
+archive/
+context/
+decisions/
+docs/
+assets/meridian-architecture.png
