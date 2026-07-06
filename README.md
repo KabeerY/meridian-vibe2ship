@@ -72,7 +72,7 @@ Supported environment variables:
 
 ```bash
 GEMINI_API_KEY=your_key
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 ENABLE_FIRESTORE=false
 FIRESTORE_DATABASE=(default)
 FIREBASE_WEB_API_KEY=your_restricted_identity_platform_browser_key
