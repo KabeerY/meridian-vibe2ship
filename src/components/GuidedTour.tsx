@@ -9,6 +9,9 @@ export interface GuidedTourStep {
   body: string;
   action?: boolean;
   placement?: "top" | "bottom";
+  waitForTarget?: string;
+  waitingTitle?: string;
+  waitingBody?: string;
 }
 
 interface TargetBox {
@@ -44,7 +47,16 @@ export function GuidedTour({
   onExit: () => void;
 }) {
   const [box, setBox] = useState<TargetBox | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionFailed, setActionFailed] = useState(false);
+  const [targetMissing, setTargetMissing] = useState(false);
   const targetRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    setActionPending(false);
+    setActionFailed(false);
+    setTargetMissing(false);
+  }, [step.id]);
 
   useLayoutEffect(() => {
     let frame = 0;
@@ -85,6 +97,15 @@ export function GuidedTour({
   }, [step.target]);
 
   useEffect(() => {
+    if (box || actionPending) {
+      setTargetMissing(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setTargetMissing(true), 900);
+    return () => window.clearTimeout(timer);
+  }, [actionPending, box, step.id]);
+
+  useEffect(() => {
     function guard(event: Event) {
       const node = event.target;
       if (!(node instanceof Node)) return;
@@ -103,12 +124,44 @@ export function GuidedTour({
   }, []);
 
   useEffect(() => {
-    if (!step.action || !targetRef.current) return;
+    if (!step.action || !targetRef.current || actionPending) return;
     const target = targetRef.current;
-    const advance = () => window.setTimeout(onNext, 180);
+    const advance = () => {
+      setActionFailed(false);
+      if (step.waitForTarget) setActionPending(true);
+      else window.setTimeout(onNext, 180);
+    };
     target.addEventListener("click", advance, { once: true });
     return () => target.removeEventListener("click", advance);
-  }, [box, onNext, step.action]);
+  }, [actionPending, box, onNext, step.action, step.waitForTarget]);
+
+  useEffect(() => {
+    if (!actionPending || !step.waitForTarget) return;
+    let finished = false;
+
+    function checkResult() {
+      if (finished) return;
+      if (document.querySelector(step.waitForTarget!)) {
+        finished = true;
+        setActionPending(false);
+        window.setTimeout(onNext, 180);
+        return;
+      }
+      if (document.querySelector(".error-banner")) {
+        finished = true;
+        setActionPending(false);
+        setActionFailed(true);
+      }
+    }
+
+    const observer = new MutationObserver(checkResult);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    checkResult();
+    return () => {
+      finished = true;
+      observer.disconnect();
+    };
+  }, [actionPending, onNext, step.waitForTarget]);
 
   const tooltipStyle = box
     ? (() => {
@@ -129,11 +182,12 @@ export function GuidedTour({
     <div className="guided-tour-layer" aria-live="polite">
       {box ? <div className="tour-spotlight" style={box} aria-hidden="true" /> : null}
       <section
-        className={`tour-tooltip${box ? "" : " tour-tooltip--waiting"}`}
+        className={`tour-tooltip${box ? "" : " tour-tooltip--waiting"}${actionPending ? " tour-tooltip--busy" : ""}`}
         data-tour-tooltip
         style={tooltipStyle}
         role="dialog"
         aria-modal="true"
+        aria-busy={actionPending}
         aria-labelledby="tour-title"
       >
         <header>
@@ -141,14 +195,34 @@ export function GuidedTour({
           <div><small>{step.eyebrow}</small><strong>{index + 1} / {total}</strong></div>
           <button type="button" aria-label="Exit guided demo" onClick={onExit}><X size={16} /></button>
         </header>
-        <h2 id="tour-title">{step.title}</h2>
-        <p>{box ? step.body : "Preparing the next part of the recovery..."}</p>
+        <h2 id="tour-title">
+          {actionPending
+            ? step.waitingTitle ?? "Meridian is preparing the next checkpoint."
+            : actionFailed
+              ? "Gemini could not finish this pass."
+              : step.title}
+        </h2>
+        <p>
+          {actionPending
+            ? step.waitingBody ?? "Keep this tab open. The walkthrough will advance automatically when the result is ready."
+            : actionFailed
+              ? "Nothing was changed. Click the highlighted control to retry, or exit the walkthrough and continue manually."
+              : box
+                ? step.body
+                : targetMissing
+                  ? "This checkpoint is not present in the current state. Continue safely; the workspace remains fully usable."
+                  : "Locating the next checkpoint..."}
+        </p>
         <footer>
-          <button className="tour-back" type="button" disabled={index === 0} onClick={onBack}><ArrowLeft size={14} /> Back</button>
-          {step.action ? (
+          <button className="tour-back" type="button" disabled={index === 0 || actionPending} onClick={onBack}><ArrowLeft size={14} /> Back</button>
+          {actionPending ? (
+            <span className="tour-progress-cue"><span className="tour-inline-spinner" /> Gemini is working</span>
+          ) : step.action && box ? (
             <span className="tour-action-cue"><MousePointer2 size={14} /> Click the highlighted control</span>
+          ) : step.action && !targetMissing ? (
+            <span className="tour-progress-cue">Finding the control...</span>
           ) : (
-            <button className="tour-next" type="button" onClick={onNext}>Continue <ArrowRight size={14} /></button>
+            <button className="tour-next" type="button" onClick={onNext}>{targetMissing && step.action ? "Continue safely" : "Continue"} <ArrowRight size={14} /></button>
           )}
         </footer>
       </section>

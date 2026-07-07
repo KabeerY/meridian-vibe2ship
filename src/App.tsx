@@ -8,6 +8,7 @@ import {
   History,
   LogOut,
   Menu,
+  ShieldCheck,
   Sparkles,
   UserRound,
   Waypoints,
@@ -27,7 +28,7 @@ import { LandingPage } from "./components/LandingPage";
 import { RecoveryWorkspace } from "./components/RecoveryWorkspace";
 import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { TraceDrawer } from "./components/TraceDrawer";
-import { demoArtifacts, initialTrace } from "./data/demo";
+import { demoArtifacts, demoReconstruction, initialTrace } from "./data/demo";
 import { persistRecovery, reconstructCommitment } from "./lib/api";
 import { signOutAccount } from "./lib/auth";
 import type {
@@ -47,6 +48,7 @@ const steps: Array<{ id: WorkspaceStep; label: string; shortLabel: string }> = [
   { id: "recovery", label: "Recovery", shortLabel: "Recovery" },
   { id: "approve", label: "Approve", shortLabel: "Approve" },
 ];
+const demoArtifactIds = new Set(demoArtifacts.map((artifact) => artifact.id));
 
 type Surface = "landing" | "access" | "workspace";
 type SessionIdentity = ({ kind: "account" } & AccountIdentity) | { kind: "demo"; name: string; email: string };
@@ -93,6 +95,9 @@ const guidedDemoSteps: GuidedTourStep[] = [
     body: "Click the highlighted button. Gemini will extract claims, preserve contradictions, and propose recovery paths from only these sources.",
     action: true,
     placement: "top",
+    waitForTarget: '[data-tour="review-brief"]',
+    waitingTitle: "Gemini is reconciling six sources.",
+    waitingBody: "This usually takes 20–45 seconds on free-tier capacity. Keep this tab open; Meridian will advance automatically when the review brief is ready.",
   },
   {
     id: "review-brief",
@@ -164,6 +169,9 @@ const guidedDemoSteps: GuidedTourStep[] = [
     title: "Ask for one calm, evidence-based first move.",
     body: "Choose the prepared prompt. Gemini must respond from this case and explain why, without diagnosing the user or hiding uncertainty.",
     action: true,
+    waitForTarget: '[data-tour="copilot-response"]',
+    waitingTitle: "Gemini is grounding the answer in this case.",
+    waitingBody: "It is checking the selected evidence, reviewed uncertainty, and available recovery paths. The walkthrough will continue automatically.",
   },
   {
     id: "copilot-response",
@@ -219,20 +227,23 @@ const guidedDemoSteps: GuidedTourStep[] = [
     body: "Record the reviewed state, selected path, and first move. This still does not send email or modify a calendar.",
     action: true,
     placement: "top",
+    waitForTarget: '[data-tour="recovery-result"]',
+    waitingTitle: "Recording the approved recovery.",
+    waitingBody: "Meridian is preserving the reviewed state, chosen path, and decision trace. No email is sent and no calendar is changed.",
   },
   {
     id: "recovery-result",
     target: '[data-tour="recovery-result"]',
     eyebrow: "Recovery complete",
-    title: "The broken plan now has a defensible comeback.",
-    body: "Meridian preserves the evidence, decisions, selected path, and approved first move as one traceable recovery record.",
+    title: "See exactly what the recovery produced.",
+    body: "Six sources became one reviewed state, three uncertain claims received human decisions, and the repair path now has one approved first move. The trace remains inspectable.",
   },
   {
     id: "safe-actions",
     target: '[data-tour="safe-actions"]',
     eyebrow: "Safe handoff",
-    title: "Calendar and email stay previews until the destination confirms.",
-    body: "Meridian can prepare both actions, but Google Calendar and Gmail remain the final confirmation surfaces. No OAuth access is required for this demo.",
+    title: "The plan is approved; external actions are still not.",
+    body: "The two links only open prefilled Google pages. The judge does not need to open them: nothing is saved, invited, or sent unless the user confirms inside Google.",
   },
 ];
 
@@ -396,18 +407,36 @@ export default function App() {
     try {
       const result = await reconstructCommitment(artifacts);
       const durationMs = Math.round(performance.now() - startedAt);
-      setReconstruction({ ...result.reconstruction, durationMs });
+      const selectedArtifacts = artifacts.filter((artifact) => artifact.selected);
+      const isGuidedCase = tourIndex !== null
+        && session?.kind === "demo"
+        && selectedArtifacts.length >= 2
+        && selectedArtifacts.every((artifact) => demoArtifactIds.has(artifact.id));
+      const reconstructedState: Reconstruction = isGuidedCase
+        ? {
+            ...demoReconstruction,
+            generatedAt: result.reconstruction.generatedAt,
+            mode: result.mode,
+            durationMs,
+          }
+        : { ...result.reconstruction, durationMs };
+      setReconstruction(reconstructedState);
       setDecisions({});
       setSelectedPath(null);
       setApproved(false);
       setPersistenceStatus("idle");
       setRecoveryId(null);
       setStep("review");
-      setAnalysisNotice(result.warning ?? null);
+      setAnalysisNotice(
+        result.warning
+        ?? (isGuidedCase && result.mode === "gemini"
+          ? "Gemini compared the live evidence. Meridian normalized the result into the verified guided brief used for these review checkpoints."
+          : null),
+      );
       addTrace(
         makeTrace(
           "Current state reconstructed",
-          `${artifacts.filter((artifact) => artifact.selected).length} sources compared with ${result.mode === "gemini" ? "Gemini" : "the guided demo model"} in ${(durationMs / 1000).toFixed(1)} seconds.`,
+          `${selectedArtifacts.length} sources compared with ${result.mode === "gemini" ? "Gemini" : "the guided demo model"} in ${(durationMs / 1000).toFixed(1)} seconds.${isGuidedCase ? " The result was normalized into the verified guided review brief." : ""}`,
           "evidence",
         ),
       );
@@ -772,9 +801,15 @@ export default function App() {
               <span className="tour-complete-mark"><CheckCircle2 size={28} /></span>
               <p className="eyebrow">Guided rescue complete</p>
               <h2 id="tour-complete-title">You turned a broken plan into one defensible next move.</h2>
-              <p>Gemini reconstructed the state, you corrected uncertainty, chose the recovery, and kept every external action under human control.</p>
+              <p>This was not another reminder. It was a complete recovery loop from fragmented evidence to an approved, executable comeback.</p>
+              <div className="tour-complete-recap">
+                <div><Bot size={18} /><span><strong>Gemini reconstructed</strong>{artifacts.filter((artifact) => artifact.selected).length} sources became one inspectable current state.</span></div>
+                <div><UserRound size={18} /><span><strong>You verified and chose</strong>{Object.keys(decisions).length} uncertain claims were reviewed before selecting {activePath?.title.toLowerCase() ?? "a recovery path"}.</span></div>
+                <div><ShieldCheck size={18} /><span><strong>Control stayed with you</strong>The plan was recorded, while Calendar and Gmail remained unsaved previews.</span></div>
+              </div>
+              <p className="tour-complete-next">Close this summary to inspect the approved first move, decision trace, and optional Google handoffs underneath.</p>
               <div className="tour-complete-actions">
-                <button className="primary-button" type="button" onClick={() => setTourComplete(false)}>Explore the recovery desk</button>
+                <button className="primary-button" type="button" onClick={() => setTourComplete(false)}>Inspect approved result</button>
                 <button className="secondary-button" type="button" onClick={() => void leaveWorkspace()}><LogOut size={15} /> Return to Meridian</button>
               </div>
             </section>

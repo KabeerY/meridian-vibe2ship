@@ -273,12 +273,13 @@ export function ArtifactIntake({
         <div className="analysis-overlay" role="status" aria-live="polite">
           <div className="analysis-panel">
             <span className="analysis-mark"><span /></span>
-            <p className="eyebrow">Reconstructing current state</p>
-            <h2>Comparing what changed across {selectedCount} sources.</h2>
+            <p className="eyebrow">Live Gemini reconstruction</p>
+            <h2>Reconciling what changed across {selectedCount} sources.</h2>
+            <p className="analysis-wait-copy">This can take 20–45 seconds on free-tier capacity. Keep this tab open; Meridian will move to review automatically when the brief is ready.</p>
             <div className="analysis-steps">
-              <span className="analysis-step analysis-step--done"><Check size={14} /> Commitments extracted</span>
-              <span className="analysis-step analysis-step--active"><span className="mini-spinner" /> Contradictions checked</span>
-              <span className="analysis-step"><span /> Recovery paths evaluated</span>
+              <span className="analysis-step analysis-step--done"><Check size={14} /> Selected sources accepted</span>
+              <span className="analysis-step analysis-step--active"><span className="mini-spinner" /> Claims and contradictions are being reconciled</span>
+              <span className="analysis-step"><span /> Recovery paths and safe options are next</span>
             </div>
           </div>
         </div>

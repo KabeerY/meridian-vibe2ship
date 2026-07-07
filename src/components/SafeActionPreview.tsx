@@ -44,26 +44,27 @@ export function SafeActionPreview({
         <div>
           <p className="eyebrow">Prepared, never automatic</p>
           <h2 id="safe-actions-title">Carry the recovery into your tools</h2>
+          <p className="safe-actions-intro">The recovery is complete. These optional handoffs let the user inspect exactly what would happen before Google saves or sends anything.</p>
         </div>
         <span><ShieldCheck size={15} /> Preview only</span>
       </header>
       <div className="safe-action-grid">
         <article>
           <span className="safe-action-icon"><CalendarPlus2 size={19} /></span>
-          <div><strong>Recovery focus block</strong><p>Tomorrow · 9:30–11:00 AM · no guests or recurrence</p></div>
+          <div><small>Optional handoff 1</small><strong>Recovery focus block</strong><p>Tomorrow · 9:30–11:00 AM · no guests or recurrence</p></div>
           <a href={buildCalendarUrl(reconstruction, path)} target="_blank" rel="noreferrer">
             Open in Google Calendar <ExternalLink size={14} />
           </a>
         </article>
         <article>
           <span className="safe-action-icon"><Mail size={19} /></span>
-          <div><strong>Stakeholder status draft</strong><p>Subject and approved body prefilled · recipient left blank</p></div>
+          <div><small>Optional handoff 2</small><strong>Stakeholder status draft</strong><p>Subject and approved body prefilled · recipient left blank</p></div>
           <a href={buildGmailUrl(reconstruction, draft)} target="_blank" rel="noreferrer">
             Open draft in Gmail <ExternalLink size={14} />
           </a>
         </article>
       </div>
-      <p className="safe-action-boundary">Meridian opens a prefilled Google page. Nothing is saved, invited, or sent until you confirm it there.</p>
+      <p className="safe-action-boundary"><strong>What happens if opened:</strong> Meridian opens a prefilled Google page in a new tab. Nothing is saved, invited, or sent until the user confirms it there.</p>
     </section>
   );
 }
