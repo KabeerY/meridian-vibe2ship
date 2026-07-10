@@ -199,7 +199,7 @@ export function GuidedTour({
           {actionPending
             ? step.waitingTitle ?? "Meridian is preparing the next checkpoint."
             : actionFailed
-              ? "Gemini could not finish this pass."
+              ? "Meridian could not finish this pass."
               : step.title}
         </h2>
         <p>

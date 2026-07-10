@@ -72,7 +72,9 @@ Supported environment variables:
 
 ```bash
 GEMINI_API_KEY=your_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.1-flash-lite
+GEMINI_GUIDE_MODEL=gemini-3.1-flash-lite
+GEMMA_MODEL=optional_exact_gemma_model_id_from_ai_studio
 ENABLE_FIRESTORE=false
 FIRESTORE_DATABASE=(default)
 FIREBASE_WEB_API_KEY=your_restricted_identity_platform_browser_key
@@ -80,7 +82,7 @@ FIREBASE_PROJECT_ID=your-google-cloud-project
 FIREBASE_AUTH_DOMAIN=your-google-cloud-project.firebaseapp.com
 ```
 
-The built-in synthetic case works in guided demo mode without a Gemini key. Custom evidence requires live Gemini reconstruction so unrelated canned data is never presented as analysis. Firebase configuration is optional for local development; the guided demo never requires an account.
+The built-in synthetic case works in guided demo mode without a Gemini key. During the walkthrough, Meridian tries live Gemini first and falls back to a verified demo brief if free-tier quota or latency would otherwise block the presentation. Custom evidence still requires live Gemini reconstruction so unrelated canned data is never presented as analysis. `GEMMA_MODEL` is optional; set it only after AI Studio confirms the exact model code for your key. Firebase configuration is optional for local development; the guided demo never requires an account.
 
 ## Build And Deploy
 

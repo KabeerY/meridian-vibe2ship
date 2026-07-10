@@ -84,6 +84,12 @@ function initialTraceFor(session: SessionIdentity | null) {
   ];
 }
 
+function modelLabel(mode: Reconstruction["mode"]) {
+  if (mode === "gemini") return "Gemini";
+  if (mode === "gemma") return "Gemma";
+  return "the guided demo model";
+}
+
 const guidedDemoSteps: GuidedTourStep[] = [
   {
     id: "sources-intro",
@@ -102,14 +108,14 @@ const guidedDemoSteps: GuidedTourStep[] = [
   {
     id: "reconstruct",
     target: '[data-tour="reconstruct"]',
-    eyebrow: "Live Gemini action",
+    eyebrow: "Live AI recovery pass",
     title: "Turn fragments into one current-state brief.",
-    body: "Click the highlighted button. Gemini will extract claims, preserve contradictions, and propose recovery paths from only these sources.",
+    body: "Click the highlighted button. Meridian tries live Gemini first, then uses the verified demo brief if free-tier capacity is slow or exhausted.",
     action: true,
     placement: "top",
     waitForTarget: '[data-tour="review-brief"]',
-    waitingTitle: "Gemini is reconciling six sources.",
-    waitingBody: "This usually takes 20–45 seconds on free-tier capacity. Keep this tab open; Meridian will advance automatically when the review brief is ready.",
+    waitingTitle: "Meridian is asking Gemini to reconcile the sources.",
+    waitingBody: "The demo will not hang. If the live call is slow or quota-blocked, Meridian falls back to the verified brief and keeps the recovery flow moving.",
   },
   {
     id: "review-brief",
@@ -417,14 +423,16 @@ export default function App() {
     setError(null);
     setIsAnalyzing(true);
     const startedAt = performance.now();
+    const selectedArtifacts = artifacts.filter((artifact) => artifact.selected);
+    const isGuidedCase = tourIndex !== null
+      && session?.kind === "demo"
+      && selectedArtifacts.length >= 2
+      && selectedArtifacts.every((artifact) => demoArtifactIds.has(artifact.id));
     try {
-      const result = await reconstructCommitment(artifacts);
+      const result = await reconstructCommitment(artifacts, {
+        timeoutMs: isGuidedCase ? 10_000 : undefined,
+      });
       const durationMs = Math.round(performance.now() - startedAt);
-      const selectedArtifacts = artifacts.filter((artifact) => artifact.selected);
-      const isGuidedCase = tourIndex !== null
-        && session?.kind === "demo"
-        && selectedArtifacts.length >= 2
-        && selectedArtifacts.every((artifact) => demoArtifactIds.has(artifact.id));
       const reconstructedState: Reconstruction = isGuidedCase
         ? {
             ...demoReconstruction,
@@ -442,14 +450,14 @@ export default function App() {
       setStep("review");
       setAnalysisNotice(
         result.warning
-        ?? (isGuidedCase && result.mode === "gemini"
-          ? "Gemini compared the live evidence. Meridian normalized the result into the verified guided brief used for these review checkpoints."
+        ?? (isGuidedCase && (result.mode === "gemini" || result.mode === "gemma")
+          ? `${modelLabel(result.mode)} compared the live evidence. Meridian normalized the result into the verified guided brief used for these review checkpoints.`
           : null),
       );
       addTrace(
         makeTrace(
           "Current state reconstructed",
-          `${selectedArtifacts.length} sources compared with ${result.mode === "gemini" ? "Gemini" : "the guided demo model"} in ${(durationMs / 1000).toFixed(1)} seconds.${isGuidedCase ? " The result was normalized into the verified guided review brief." : ""}`,
+          `${selectedArtifacts.length} sources compared with ${modelLabel(result.mode)} in ${(durationMs / 1000).toFixed(1)} seconds.${isGuidedCase ? " The result was normalized into the verified guided review brief." : ""}`,
           "evidence",
         ),
       );

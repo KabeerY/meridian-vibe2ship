@@ -41,8 +41,8 @@ export function CopilotDrawer({
       id: "welcome",
       role: "assistant",
       text: reconstruction
-        ? "Ask about this recovery's evidence, uncertainty, options, or draft. I will stay inside the selected case."
-        : "Ask what evidence belongs in this recovery. I will stay focused on the selected commitment.",
+        ? "Ask about this recovery, why Meridian works this way, or how to use the demo. I stay inside the selected evidence and never act externally."
+        : "Ask what evidence belongs here, what Meridian does, or how the demo works. I will keep the bundle focused on one selected commitment.",
       mode: "guided",
     },
   ]);
@@ -57,6 +57,7 @@ export function CopilotDrawer({
   );
 
   const assistantModeLabel = (message: Message) => {
+    if (message.mode === "gemma") return "Meridian · Gemma guide";
     if (message.mode !== "gemini") return "Meridian guide";
     return reconstruction ? "Meridian · Gemini" : "Meridian · Gemini guide";
   };
@@ -125,7 +126,7 @@ export function CopilotDrawer({
           <button ref={closeRef} className="icon-button" data-tour="close-copilot" type="button" aria-label="Close Ask Meridian" onClick={onClose}><X size={18} /></button>
         </header>
 
-        <div className="copilot-boundary"><ShieldCheck size={15} /><span>Selected evidence only. No external action.</span></div>
+        <div className="copilot-boundary"><ShieldCheck size={15} /><span>Selected evidence plus app guidance. No external action.</span></div>
 
         <div className="copilot-messages" aria-live="polite">
           {messages.map((message, index) => (
@@ -151,7 +152,7 @@ export function CopilotDrawer({
               </div>
             </article>
           ))}
-          {busy ? <div className="copilot-thinking"><Sparkles size={14} /><span>Checking the recovery state...</span></div> : null}
+          {busy ? <div className="copilot-thinking"><Sparkles size={14} /><span>Asking Gemini. This usually responds in a few seconds...</span></div> : null}
           <div ref={endRef} />
         </div>
 
@@ -171,7 +172,7 @@ export function CopilotDrawer({
                 void submit(question);
               }
             }}
-            placeholder="Ask about evidence, options, or the draft..."
+            placeholder="Ask about the app, evidence, options, or the draft..."
             rows={2}
             maxLength={1000}
           />

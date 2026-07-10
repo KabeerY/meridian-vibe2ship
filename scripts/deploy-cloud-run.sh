@@ -85,7 +85,7 @@ gcloud run deploy "${SERVICE}" \
   --allow-unauthenticated \
   --service-account="${RUNTIME_EMAIL}" \
   --set-secrets="GEMINI_API_KEY=${SECRET}:latest" \
-  --set-env-vars="GEMINI_MODEL=gemini-2.5-flash,NODE_ENV=production,ENABLE_FIRESTORE=true,FIRESTORE_DATABASE=(default),FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY},FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_AUTH_DOMAIN=${PROJECT_ID}.firebaseapp.com" \
+  --set-env-vars="GEMINI_MODEL=gemini-3.1-flash-lite,GEMINI_GUIDE_MODEL=gemini-3.1-flash-lite,NODE_ENV=production,ENABLE_FIRESTORE=true,FIRESTORE_DATABASE=(default),FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY},FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_AUTH_DOMAIN=${PROJECT_ID}.firebaseapp.com" \
   --memory=512Mi \
   --cpu=1 \
   --concurrency=20 \

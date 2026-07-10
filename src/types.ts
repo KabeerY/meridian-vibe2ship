@@ -112,7 +112,7 @@ export interface Reconstruction {
     note: string;
   };
   generatedAt: string;
-  mode?: "gemini" | "demo";
+  mode?: "gemini" | "gemma" | "demo";
   durationMs?: number;
 }
 
@@ -124,7 +124,7 @@ export interface CopilotResponse {
   answer: string;
   referencedClaimIds: string[];
   suggestedQuestions: string[];
-  mode: "gemini" | "guided";
+  mode: "gemini" | "gemma" | "guided";
 }
 
 export interface TraceEvent {

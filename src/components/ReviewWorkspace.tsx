@@ -45,6 +45,12 @@ const stateMeta: Record<
 
 const reviewRequired = new Set<EvidenceState>(["inferred", "conflicting", "missing"]);
 
+function engineLabel(mode: Reconstruction["mode"]) {
+  if (mode === "gemini") return "Gemini";
+  if (mode === "gemma") return "Gemma";
+  return "Guided demo";
+}
+
 function StateMarker({ state }: { state: EvidenceState }) {
   const meta = stateMeta[state];
   const Icon = meta.icon;
@@ -147,7 +153,7 @@ export function ReviewWorkspace({
           <span><strong>{reconstruction.sufficiency.label}</strong>{reconstruction.sufficiency.note}</span>
         </div>
         <span className={`engine-badge engine-badge--${reconstruction.mode ?? "demo"}`}>
-          {reconstruction.mode === "gemini" ? "Gemini" : "Guided demo"}
+          {engineLabel(reconstruction.mode)}
           {typeof reconstruction.durationMs === "number" ? ` · ${(reconstruction.durationMs / 1000).toFixed(1)}s` : ""}
         </span>
       </div>
