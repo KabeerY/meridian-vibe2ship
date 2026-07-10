@@ -131,7 +131,7 @@ export function CopilotDrawer({
             >
               {message.role === "assistant" ? <span className="copilot-avatar"><Bot size={15} /></span> : null}
               <div>
-                {message.role === "assistant" ? <small>{message.mode === "gemini" ? "Gemini" : "Guided response"}</small> : null}
+                {message.role === "assistant" ? <small>{message.mode === "gemini" ? "Meridian · Gemini" : "Meridian guide"}</small> : null}
                 <p>{message.text}</p>
                 {message.referencedClaimIds?.length ? (
                   <div className="copilot-references">

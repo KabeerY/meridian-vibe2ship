@@ -443,6 +443,11 @@ app.post("/api/copilot", copilotLimiter, async (request, response) => {
 
   const input = parsedRequest.data;
   const fallback = guidedCopilotAnswer(input);
+  if (input.step === "sources" || !input.reconstruction) {
+    response.json({ ...fallback, mode: "guided" });
+    return;
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     response.json({ ...fallback, mode: "guided" });
