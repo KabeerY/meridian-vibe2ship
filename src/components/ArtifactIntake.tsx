@@ -28,6 +28,7 @@ interface ArtifactIntakeProps {
   onRemove: (id: string) => void;
   onReset: () => void;
   onAnalyze: () => void;
+  isDemoWorkspace?: boolean;
 }
 
 const kindMeta: Record<ArtifactKind, { label: string; icon: typeof Mail }> = {
@@ -64,6 +65,7 @@ export function ArtifactIntake({
   onRemove,
   onReset,
   onAnalyze,
+  isDemoWorkspace = true,
 }: ArtifactIntakeProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPaste, setShowPaste] = useState(false);
@@ -118,12 +120,14 @@ export function ArtifactIntake({
           <p className="eyebrow">One commitment</p>
           <h1 id="intake-title">Bring the pieces together.</h1>
           <p className="heading-copy">
-            Select the artifacts that describe what was promised, what changed, and where the work stopped.
+            {isDemoWorkspace
+              ? "Select the artifacts that describe what was promised, what changed, and where the work stopped."
+              : "Paste or upload at least two sources from one disrupted commitment. Meridian only analyzes what you select."}
           </p>
         </div>
         <button className="quiet-button" type="button" onClick={onReset}>
           <RotateCcw size={15} aria-hidden="true" />
-          Reset demo
+          {isDemoWorkspace ? "Reset demo" : "Clear sources"}
         </button>
       </header>
 
@@ -191,7 +195,15 @@ export function ArtifactIntake({
           ) : null}
 
           <div className="artifact-list">
-            {artifacts.map((artifact, index) => {
+            {artifacts.length === 0 ? (
+              <div className="artifact-empty">
+                <span><FilePlus2 size={18} aria-hidden="true" /></span>
+                <div>
+                  <strong>No sources yet</strong>
+                  <p>Add an email, note, task, chat excerpt, meeting summary, or file that belongs to one commitment.</p>
+                </div>
+              </div>
+            ) : artifacts.map((artifact, index) => {
               const meta = kindMeta[artifact.kind];
               const Icon = meta.icon;
               const isCustom = artifact.id.startsWith("upload-") || artifact.id.startsWith("note-");

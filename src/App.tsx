@@ -72,6 +72,18 @@ function storeSession(session: SessionIdentity | null) {
   else window.sessionStorage.removeItem(sessionStorageKey);
 }
 
+function initialArtifactsFor(session: SessionIdentity | null) {
+  return session?.kind === "account" ? [] : demoArtifacts;
+}
+
+function initialTraceFor(session: SessionIdentity | null) {
+  return [
+    session?.kind === "account"
+      ? makeTrace("Workspace opened", "Add or paste at least two sources from one commitment to reconstruct a current state.", "system")
+      : makeTrace("Recovery opened", `${demoArtifacts.length} demo artifacts are ready for review.`, "system"),
+  ];
+}
+
 const guidedDemoSteps: GuidedTourStep[] = [
   {
     id: "sources-intro",
@@ -301,16 +313,17 @@ function StageRail({
 }
 
 export default function App() {
+  const initialSession = useMemo(readStoredSession, []);
   const [surface, setSurface] = useState<Surface>(() => {
     if (window.location.pathname.startsWith("/access")) return "access";
     if (window.location.pathname.startsWith("/workspace")) return "workspace";
     return "landing";
   });
-  const [session, setSession] = useState<SessionIdentity | null>(readStoredSession);
+  const [session, setSession] = useState<SessionIdentity | null>(initialSession);
   const [tourIndex, setTourIndex] = useState<number | null>(null);
   const [tourComplete, setTourComplete] = useState(false);
   const [step, setStep] = useState<WorkspaceStep>("sources");
-  const [artifacts, setArtifacts] = useState<Artifact[]>(demoArtifacts);
+  const [artifacts, setArtifacts] = useState<Artifact[]>(() => initialArtifactsFor(initialSession));
   const [reconstruction, setReconstruction] = useState<Reconstruction | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -320,7 +333,7 @@ export default function App() {
   const [approved, setApproved] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>("idle");
   const [recoveryId, setRecoveryId] = useState<string | null>(null);
-  const [trace, setTrace] = useState<TraceEvent[]>(initialTrace);
+  const [trace, setTrace] = useState<TraceEvent[]>(() => initialSession ? initialTraceFor(initialSession) : initialTrace);
   const [traceOpen, setTraceOpen] = useState(false);
   const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
@@ -355,7 +368,7 @@ export default function App() {
   }
 
   function enterDemo() {
-    reset();
+    reset("demo");
     const demoSession: SessionIdentity = { kind: "demo", name: "Guided demo", email: "Synthetic workspace" };
     setSession(demoSession);
     storeSession(demoSession);
@@ -367,7 +380,7 @@ export default function App() {
   }
 
   function enterAccount(account: AccountIdentity) {
-    reset();
+    reset("account");
     const accountSession: SessionIdentity = { kind: "account", ...account };
     setSession(accountSession);
     storeSession(accountSession);
@@ -552,9 +565,10 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function reset() {
+  function reset(kind: SessionIdentity["kind"] = session?.kind ?? "demo") {
+    const demoMode = kind === "demo";
     setStep("sources");
-    setArtifacts(demoArtifacts);
+    setArtifacts(demoMode ? demoArtifacts : []);
     setReconstruction(null);
     setDecisions({});
     setSelectedPath(null);
@@ -564,7 +578,7 @@ export default function App() {
     setRecoveryId(null);
     setError(null);
     setAnalysisNotice(null);
-    setTrace([makeTrace("Recovery opened", `${demoArtifacts.length} demo artifacts are ready for review.`, "system")]);
+    setTrace(initialTraceFor(demoMode ? { kind: "demo", name: "Guided demo", email: "Synthetic workspace" } : { kind: "account", uid: "local", name: "Account workspace", email: "account" }));
     window.scrollTo({ top: 0 });
   }
 
@@ -681,7 +695,8 @@ export default function App() {
                 onToggle={(id) => setArtifacts((items) => items.map((item) => item.id === id ? { ...item, selected: !item.selected } : item))}
                 onAdd={(artifact) => setArtifacts((items) => [...items, artifact])}
                 onRemove={(id) => setArtifacts((items) => items.filter((item) => item.id !== id))}
-                onReset={reset}
+                onReset={() => reset()}
+                isDemoWorkspace={session?.kind !== "account"}
                 onAnalyze={() => void analyze()}
               />
             ) : null}

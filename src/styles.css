@@ -596,6 +596,41 @@ strong {
   border-top: 1px solid var(--border);
 }
 
+.artifact-empty {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 24px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.artifact-empty > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--cobalt);
+  background: var(--cobalt-soft);
+}
+
+.artifact-empty strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.artifact-empty p {
+  max-width: 520px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .artifact-row {
   position: relative;
   display: grid;

@@ -142,8 +142,7 @@ function geminiModelCandidates() {
   return [...new Set([
     process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
     "gemini-2.5-flash",
-    "gemini-3-flash-preview",
-    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
   ])];
 }
 
@@ -151,7 +150,7 @@ function isRetryableGeminiError(reason: unknown) {
   const status = typeof reason === "object" && reason && "status" in reason
     ? Number((reason as { status?: unknown }).status)
     : 0;
-  return status === 429 || status >= 500;
+  return status === 404 || status === 429 || status >= 500;
 }
 
 async function generateWithModelFallback(
