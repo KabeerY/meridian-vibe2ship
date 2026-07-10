@@ -578,6 +578,14 @@ export default function App() {
     setRecoveryId(null);
     setError(null);
     setAnalysisNotice(null);
+    setActiveClaimId(null);
+    setActiveSourceId(null);
+    setTraceOpen(false);
+    setCopilotOpen(false);
+    setGuideOpen(false);
+    setGuideActive(false);
+    setTourComplete(false);
+    setTourIndex(demoMode ? 0 : null);
     setTrace(initialTraceFor(demoMode ? { kind: "demo", name: "Guided demo", email: "Synthetic workspace" } : { kind: "account", uid: "local", name: "Account workspace", email: "account" }));
     window.scrollTo({ top: 0 });
   }
@@ -738,7 +746,7 @@ export default function App() {
                 onApprove={() => void approvePlan()}
                 onRevise={revisePlan}
                 onBack={() => navigate("recovery")}
-                onRestart={reset}
+                onRestart={() => reset()}
               />
             ) : null}
           </motion.div>
@@ -781,7 +789,7 @@ export default function App() {
             onExit={() => void leaveWorkspace()}
             onReset={() => {
               setDemoMenuOpen(false);
-              reset();
+              reset(session?.kind ?? "demo");
             }}
           />
         ) : null}

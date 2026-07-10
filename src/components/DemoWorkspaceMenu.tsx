@@ -38,10 +38,14 @@ export function DemoWorkspaceMenu({
           <div><strong id="demo-menu-title">{title}</strong><small>{detail}</small></div>
           <button ref={closeRef} className="icon-button" type="button" aria-label="Close menu" onClick={onClose}><X size={16} /></button>
         </header>
-        <p className="demo-menu-copy">This workspace uses a synthetic software-engineering case. You can add your own text sources, but complete source artifacts are not stored by default.</p>
+        <p className="demo-menu-copy">
+          {isAccount
+            ? "This workspace starts empty. Add only the source text you want Meridian to analyze; complete source artifacts are not stored by default."
+            : "This workspace uses a synthetic software-engineering case. You can add your own text sources, but complete source artifacts are not stored by default."}
+        </p>
         <div className="demo-menu-actions">
           <button type="button" onClick={onOpenGuide}><CircleHelp size={16} /><span><strong>Recovery guide</strong><small>Understand each stage</small></span></button>
-          <button type="button" onClick={onReset}><RotateCcw size={16} /><span><strong>Reset demo</strong><small>Restore the original case</small></span></button>
+          <button type="button" onClick={onReset}><RotateCcw size={16} /><span><strong>{isAccount ? "Clear workspace" : "Reset demo"}</strong><small>{isAccount ? "Remove current sources" : "Restore the original case"}</small></span></button>
           <button type="button" onClick={onExit}><LogOut size={16} /><span><strong>{isAccount ? "Sign out" : "Leave workspace"}</strong><small>Return to Meridian</small></span></button>
         </div>
         <div className="demo-menu-boundary"><ShieldCheck size={15} /><span><strong>Human-controlled</strong> Nothing external is sent or changed.</span></div>
