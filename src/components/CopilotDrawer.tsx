@@ -56,6 +56,11 @@ export function CopilotDrawer({
     [reconstruction],
   );
 
+  const assistantModeLabel = (message: Message) => {
+    if (message.mode !== "gemini") return "Meridian guide";
+    return reconstruction ? "Meridian · Gemini" : "Meridian · Gemini guide";
+  };
+
   useEffect(() => {
     closeRef.current?.focus();
     function onKeyDown(event: KeyboardEvent) {
@@ -131,7 +136,7 @@ export function CopilotDrawer({
             >
               {message.role === "assistant" ? <span className="copilot-avatar"><Bot size={15} /></span> : null}
               <div>
-                {message.role === "assistant" ? <small>{message.mode === "gemini" ? "Meridian · Gemini" : "Meridian guide"}</small> : null}
+                {message.role === "assistant" ? <small>{assistantModeLabel(message)}</small> : null}
                 <p>{message.text}</p>
                 {message.referencedClaimIds?.length ? (
                   <div className="copilot-references">
