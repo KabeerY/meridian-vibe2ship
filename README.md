@@ -27,13 +27,13 @@ The included hero case follows a software engineer recovering an at-risk client 
 - Human approval, editable drafts, traceable corrections, and revision after approval
 - Preview-only Google Calendar focus blocks and Gmail drafts with final confirmation kept in Google
 - Firestore persistence for approved recovery records without storing complete source artifacts
-- Graceful guided fallback for the built-in demo when live Gemini capacity is unavailable
+- Graceful guided fallback for the built-in demo when Gemini capacity is unavailable
 - Responsive, keyboard-accessible recovery desk for desktop and mobile
 
 ## Google Technologies
 
 - **Gemini API via Google AI Studio** - structured state reconstruction and bounded conversational assistance
-- **Google Cloud Run** - public, autoscaling web application and API deployment
+- **Google Cloud Run** - managed container runtime used for the hackathon deployment
 - **Cloud Firestore** - approved recovery records and decision traces
 - **Secret Manager** - server-side Gemini API key storage
 - **Cloud Build** - source-based Cloud Run builds
@@ -80,16 +80,7 @@ FIREBASE_PROJECT_ID=your-google-cloud-project
 FIREBASE_AUTH_DOMAIN=your-google-cloud-project.firebaseapp.com
 ```
 
-The built-in synthetic case works in guided demo mode without a Gemini key. During the walkthrough, Meridian tries live Gemini first and falls back to a verified demo brief if free-tier quota or latency would otherwise block the presentation. Custom evidence still requires live Gemini reconstruction so unrelated canned data is never presented as analysis. `GEMMA_MODEL` is optional; set it only after AI Studio confirms the exact model code for your key. Firebase configuration is optional for local development; the guided demo never requires an account.
-
-## Build And Deploy
-
-```bash
-npm run build
-PROJECT_ID=your-google-cloud-project npm run deploy:gcp
-```
-
-The deployment script enables the required Google Cloud APIs, creates the least-privilege runtime identity and Firestore database when needed, stores the Gemini key in Secret Manager, then deploys the application to Cloud Run.
+The built-in synthetic case works in guided demo mode without a Gemini key. During the walkthrough, Meridian tries Gemini first and falls back to a verified demo brief if free-tier quota or latency would otherwise block the presentation. Custom evidence still requires Gemini reconstruction so unrelated canned data is never presented as analysis. `GEMMA_MODEL` is optional; set it only after AI Studio confirms the exact model code for your key. Firebase configuration is optional for local development; the guided demo never requires an account.
 
 ## Stack
 
