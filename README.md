@@ -2,11 +2,9 @@
 
 **An evidence-grounded recovery companion for plans that stopped matching reality.**
 
-[Live application](https://meridian-1058381544422.asia-south1.run.app) | Built for the Vibe2Ship hackathon's **The Last-Minute Life Saver** challenge
+Built for the Vibe2Ship hackathon's **The Last-Minute Life Saver** challenge.
 
 Most productivity tools help people create a plan. Meridian owns the more neglected moment after that plan breaks: it reconstructs what is true across fragmented sources, makes uncertainty visible, compares valid recovery paths, and helps the user approve one executable next move.
-
-![Meridian recovery result](assets/meridian-recovery-result.jpg)
 
 ## The Workflow
 
